@@ -1,0 +1,7 @@
+/obj/
+/bin/**/*
+!/bin/*.sh
+/data/
+
+.vim_extra_conf.vim
+.ycm_extra_conf.py*
