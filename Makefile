@@ -37,7 +37,7 @@ BUILDOBJ = $(CXX) -c $(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
 BUILDEXE = $(CXX) $(LDFLAGS) $$^ -o $$@
 
 # Main targets
-all: compile-load compile-test
+all: compile-load
 clean:
 	find $(OBJ_DIR) -type f -and -name '*.o' -delete 2> /dev/null || true
 	find $(EXE_DIR) -type f -and -not -name '*.sh' -delete 2> /dev/null || true
@@ -45,7 +45,12 @@ purge: clean
 	rm -rf $(OBJ_DIR)
 
 # Generate targets for source trees
-SOURCES = src gtest test
+#
+# Will also generate a "compile-%" and
+# a "%" target for compiling and running
+# an executable (e.g. "compile-test"
+# and "test")
+SOURCES = src test
 include targets.mk
 
 # Include generated dependencies
