@@ -2,6 +2,22 @@
 
 using namespace std;
 
+DictionaryLoader::DictionaryLoader(DictionaryType type) {
+  switch (type) {
+    case DictionaryType::Dummy:
+      dictionary = unique_ptr<Dictionary>(new DummyDictionary());
+      break;
+
+    case DictionaryType::Uncompressed:
+      dictionary = unique_ptr<Dictionary>(new UncompressedDictionary());
+      break;
+  }
+}
+
+DictionaryLoader::~DictionaryLoader() {
+  dictionary.reset();
+}
+
 void DictionaryLoader::setBasePrefix(string prefix) {
   basePrefix = prefix;
 }
@@ -18,5 +34,5 @@ void DictionaryLoader::addString(string prefixId, string value) {
   else {
     insertValue = prefixes.at(prefixId) + value;
   }
-  dictionary.insert(insertValue);
+  dictionary->insert(insertValue);
 }

@@ -9,7 +9,7 @@ endif
 
 # Define clang flags
 ifeq ($(CXX), clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-shadow -Wno-c++98-compat --std=c++11
+	CXXFLAGS = -g -Weverything -Werror -Wno-shadow -Wno-c++98-compat -Wno-unused-parameter --std=c++11
 	LDFLAGS =
 endif
 

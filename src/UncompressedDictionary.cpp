@@ -2,7 +2,7 @@
 
 using namespace std;
 
-void UncompressedDictionary::insert(string& value) {
+void UncompressedDictionary::insert(string value) {
   index.insert(make_pair(++nextId, value));
   reverseIndex.insert(make_pair(value, nextId));
 }
