@@ -23,7 +23,7 @@ To execute tests, run `make test`.
 
 ## Requirements
 
-Tested on Arch Linux x64 with Clang 3.2; a sufficiently recent version of GCC should work, too.
+Tested on Arch Linux x64 with Clang 3.2 and GCC 4.8.0.
 For the helper scripts, the following programs are used: bash, 7z, and wget or curl.
 
 ## License notices
