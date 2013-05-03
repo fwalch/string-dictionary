@@ -15,7 +15,8 @@ String dictionary implementations for RDF databases
 
  1. Execute `make` to compile the source code.
  2. Execute `./bin/fetch-yago.sh` to download Yago Facts sample data to `data/yagoFacts.ttl` (optional).
- 3. Run `bin/load [turtle file]` to load data into the string dictionary.
+ 3. Run `bin/load [dictionary implementation] [turtle file]` to load data into the string dictionary.
+ 4. Measure memory usage using `ps -C load -o rss=`.
 
 To execute tests, run `make test`.
 

@@ -16,7 +16,7 @@ class UncompressedDictionary : public Dictionary {
     std::unordered_map<std::string, IdType> reverseIndex;
 
   public:
-    ~UncompressedDictionary() { }
+    ~UncompressedDictionary() noexcept { }
     void insert(std::string value);
 };
 

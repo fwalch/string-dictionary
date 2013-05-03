@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
-#include <set>
+#include <vector>
 #include <string>
 #include "TurtleParser.hpp"
 #include "DictionaryLoader.hpp"
@@ -15,31 +15,32 @@
  * measurements.
  */
 
-inline int usageMessage(std::string argv0, std::set<std::string> typeStrings) {
-  std::cerr << "Usage: " << argv0 << " [dictionary type] [turtle file]" << std::endl;
+inline int usageMessage(std::string argv0, std::vector<std::string> typeStrings) {
+  std::cerr << "Usage: " << argv0 << " [dictionary implementation] [turtle file]" << std::endl;
   std::cerr << std::endl;
-  std::cerr << "Available dictionary types:" << std::endl;
+  std::cerr << "Available dictionary implementations:" << std::endl;
   for (std::string type : typeStrings) {
     std::cerr << " > " << type << std::endl;
   }
   return 1;
 }
 
-inline bool getDictionaryType(std::set<std::string> typeStrings, std::string typeString, DictionaryLoader::DictionaryType& type) {
-  auto it = typeStrings.find(typeString);
-  if (it == typeStrings.end()) {
-    return false;
+inline bool getDictionaryType(std::vector<std::string> typeStrings, std::string typeString, DictionaryLoader::DictionaryType& type) {
+  for (size_t i = 0; i < typeStrings.size(); i++) {
+    if (typeStrings[i] == typeString) {
+      type = static_cast<DictionaryLoader::DictionaryType>(i);
+      return true;
+    }
   }
-  //TODO: this can be done more easily, right?
-  type = static_cast<DictionaryLoader::DictionaryType>(static_cast<unsigned long>(&(*it) - &(*typeStrings.begin()))/sizeof(DictionaryLoader::DictionaryType));
-  return true;
+  return false;
 }
 
 int main(int argc, const char** argv) {
   //TODO: move to global variable
-  std::set<std::string> typeStrings = {
+  std::vector<std::string> typeStrings = {
     "dummy",
-    "uncompressed"
+    "uncompressed",
+    "simple"
   };
 
   if (argc != 3) {

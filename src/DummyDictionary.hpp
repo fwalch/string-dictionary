@@ -8,7 +8,7 @@
  */
 class DummyDictionary : public Dictionary {
   public:
-    ~DummyDictionary() { }
+    ~DummyDictionary() noexcept { }
     void insert(std::string value);
 };
 

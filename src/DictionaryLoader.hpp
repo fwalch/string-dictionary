@@ -7,12 +7,14 @@
 #include "Dictionary.hpp"
 #include "UncompressedDictionary.hpp"
 #include "DummyDictionary.hpp"
+#include "SimpleDictionary.hpp"
 
 class DictionaryLoader {
   public:
     enum DictionaryType {
       Dummy,
-      Uncompressed
+      Uncompressed,
+      Simple
     };
 
   private:

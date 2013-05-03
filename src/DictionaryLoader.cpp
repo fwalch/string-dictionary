@@ -11,6 +11,10 @@ DictionaryLoader::DictionaryLoader(DictionaryType type) {
     case DictionaryType::Uncompressed:
       dictionary = unique_ptr<Dictionary>(new UncompressedDictionary());
       break;
+
+    case DictionaryType::Simple:
+      dictionary = unique_ptr<Dictionary>(new SimpleDictionary());
+      break;
   }
 }
 

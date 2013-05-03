@@ -8,11 +8,11 @@
  */
 class Dictionary {
   protected:
-    unsigned long nextId;
+    unsigned long nextId = 0;
 
   public:
     typedef unsigned long IdType;
-    virtual ~Dictionary();
+    virtual ~Dictionary() noexcept;
     virtual void insert(std::string value) = 0;
 };
 
