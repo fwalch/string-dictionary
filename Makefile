@@ -9,13 +9,13 @@ endif
 
 # Define clang flags
 ifeq ($(CXX), clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-shadow -Wno-c++98-compat -Wno-unused-parameter --std=c++11
+	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat --std=c++11
 	LDFLAGS =
 endif
 
 # Define gcc flags
 ifeq ($(CXX), g++)
-	CXXFLAGS = -g -Wall -Wextra -Werror --std=c++11
+	CXXFLAGS = -g -Wall -Wextra -Werror -pedantic --std=c++11
 	LDFLAGS =
 endif
 

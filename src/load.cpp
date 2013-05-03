@@ -1,8 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include <exception>
-#include <vector>
 #include <string>
+#include <vector>
 #include "TurtleParser.hpp"
 #include "DictionaryLoader.hpp"
 
@@ -15,18 +14,24 @@
  * measurements.
  */
 
-inline int usageMessage(std::string argv0, std::vector<std::string> typeStrings) {
+static constexpr const char* typeStrings[] = {
+  "dummy",
+  "uncompressed",
+  "simple"
+};
+
+inline int usageMessage(const char* argv0) {
   std::cerr << "Usage: " << argv0 << " [dictionary implementation] [turtle file]" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available dictionary implementations:" << std::endl;
-  for (std::string type : typeStrings) {
+  for (auto type : typeStrings) {
     std::cerr << " > " << type << std::endl;
   }
   return 1;
 }
 
-inline bool getDictionaryType(std::vector<std::string> typeStrings, std::string typeString, DictionaryLoader::DictionaryType& type) {
-  for (size_t i = 0; i < typeStrings.size(); i++) {
+inline bool getDictionaryType(std::string typeString, DictionaryLoader::DictionaryType& type) {
+  for (size_t i = 0; i < sizeof(typeStrings)/sizeof(char*); i++) {
     if (typeStrings[i] == typeString) {
       type = static_cast<DictionaryLoader::DictionaryType>(i);
       return true;
@@ -36,37 +41,30 @@ inline bool getDictionaryType(std::vector<std::string> typeStrings, std::string 
 }
 
 int main(int argc, const char** argv) {
-  //TODO: move to global variable
-  std::vector<std::string> typeStrings = {
-    "dummy",
-    "uncompressed",
-    "simple"
-  };
-
   if (argc != 3) {
-    return usageMessage(argv[0], typeStrings);
+    return usageMessage(argv[0]);
   }
 
+  // Verify that dictionary type is valid
   DictionaryLoader::DictionaryType type;
-  if (!getDictionaryType(typeStrings, argv[1], type)) {
-    return usageMessage(argv[0], typeStrings);
+  if (!getDictionaryType(argv[1], type)) {
+    return usageMessage(argv[0]);
   }
 
+  // Verify that file name is valid
   std::ifstream file(argv[2]);
   if (!file.good()) {
-    return usageMessage(argv[0], typeStrings);
+    return usageMessage(argv[0]);
   }
 
   std::cout << "Reading Turtle data from '" << argv[2] << "' into " << argv[1] << " dictionary." << std::endl;
+
   TurtleParser parser(file);
   DictionaryLoader loader(type);
-
   parser.loadInto(loader);
-
   file.close();
 
   std::cout << "Done." << std::endl;
-
   std::cout << "Press Enter to exit...";
   std::cin.get();
 

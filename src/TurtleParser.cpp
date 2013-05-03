@@ -6,14 +6,13 @@
 
 using namespace std;
 
-TurtleParser::TurtleParser(istream& input) : input(input) { }
+TurtleParser::TurtleParser(istream& inputStream) : input(inputStream) { }
 
 void TurtleParser::loadInto(DictionaryLoader& loader) {
   if (!input.good()) {
     throw Exception("Could not read from stream");
   }
 
-  loader.addPrefix("a", "b");
   string line;
   while (getline(input, line).good()) {
     if (line.empty() || line.at(0) == '#') continue;

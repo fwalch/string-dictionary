@@ -6,6 +6,7 @@ String dictionary implementations for RDF databases
 
     bin/              Helper scripts and compiled executables
     data/             Sample data
+    gmock/            googlemock source code
     gtest/            googletest source code
     obj/              Build output
     src/              Source code
@@ -27,4 +28,5 @@ For the helper scripts, the following programs are used: bash, 7z, and wget or c
 
 ## License notices
 
-Contains source code of [`googletest`](https://code.google.com/p/googletest) (see its [license terms](gtest/COPYING)).
+Contains source code of [`googletest`](https://code.google.com/p/googletest) ([license terms](gtest/COPYING))
+and [`googlemock`](https://code.google.com/p/googlemock) ([license terms](gmock/COPYING)).

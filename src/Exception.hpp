@@ -6,7 +6,7 @@
 
 class Exception : public std::exception {
   private:
-    const std::string msg;
+    const std::string message;
 
   public:
     Exception(const std::string message);

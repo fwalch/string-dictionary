@@ -24,11 +24,11 @@ class DictionaryLoader {
 
   public:
     DictionaryLoader(DictionaryLoader::DictionaryType type);
-    ~DictionaryLoader();
+    virtual ~DictionaryLoader();
 
-    void setBasePrefix(std::string prefix);
-    void addPrefix(std::string id, std::string prefix);
-    void addString(std::string prefixId, std::string value);
+    virtual void setBasePrefix(std::string prefix);
+    virtual void addPrefix(std::string id, std::string prefix);
+    virtual void addString(std::string prefixId, std::string value);
 };
 
 #endif
