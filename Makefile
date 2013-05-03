@@ -20,11 +20,11 @@ ifeq ($(CXX), g++)
 endif
 
 # Define build types
-ifdef release
-	CXXFLAGS += -O3
+ifdef debug
+	CXXFLAGS += -O0
 	LDFLAGS +=
 else
-	CXXFLAGS += -O0
+	CXXFLAGS += -O3
 	LDFLAGS +=
 endif
 
