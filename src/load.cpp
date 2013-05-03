@@ -65,8 +65,9 @@ int main(int argc, const char** argv) {
 
   file.close();
 
-  // Wait until exit
-  std::cout << "Press any key to exit..." << std::endl;
+  std::cout << "Done." << std::endl;
+
+  std::cout << "Press Enter to exit...";
   std::cin.get();
 
   return 0;
