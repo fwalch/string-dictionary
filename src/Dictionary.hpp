@@ -7,13 +7,17 @@
  * Base class for dictionary implementations.
  */
 class Dictionary {
-  protected:
-    unsigned long nextId = 0;
-
   public:
     typedef unsigned long IdType;
+
+  protected:
+    IdType nextId = 0;
+
+  public:
     virtual ~Dictionary() noexcept;
     virtual void insert(std::string value) = 0;
+
+    IdType size() const;
 };
 
 #endif
