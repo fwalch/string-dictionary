@@ -8,13 +8,13 @@ ifeq ($(origin CXX), default)
 endif
 
 # Define clang flags
-ifeq ($(CXX), clang++)
+ifneq ($(findstring clang++,$(CXX)),)
 	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat --std=c++11
 	LDFLAGS =
 endif
 
 # Define gcc flags
-ifeq ($(CXX), g++)
+ifneq ($(findstring g++,$(CXX)),)
 	CXXFLAGS = -g -Wall -Wextra -Werror -pedantic --std=c++0x
 	LDFLAGS =
 endif
