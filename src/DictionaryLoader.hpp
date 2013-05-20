@@ -8,13 +8,17 @@
 #include "UncompressedDictionary.hpp"
 #include "DummyDictionary.hpp"
 #include "SimpleDictionary.hpp"
+#include "ARTDictionary.hpp"
+#include "HashARTDictionary.hpp"
 
 class DictionaryLoader {
   public:
     enum DictionaryType {
       Dummy,
       Uncompressed,
-      Simple
+      Simple,
+      ART,
+      HashART
     };
 
   private:

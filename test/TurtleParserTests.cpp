@@ -7,6 +7,9 @@
 using namespace std;
 using ::testing::_;
 
+// TODO: tests contain no newlines; parser only reads lines
+// Re-enable tests
+
 TEST(TurtleParser, DISABLED_Comment) {
   stringstream stream("# comments should be ignored");
   TurtleParser parser(stream);

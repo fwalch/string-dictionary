@@ -15,6 +15,14 @@ DictionaryLoader::DictionaryLoader(DictionaryType type) {
     case DictionaryType::Simple:
       dictionary = unique_ptr<Dictionary>(new SimpleDictionary());
       break;
+
+    case DictionaryType::ART:
+      dictionary = unique_ptr<Dictionary>(new ARTDictionary());
+      break;
+
+    case DictionaryType::HashART:
+      dictionary = unique_ptr<Dictionary>(new HashARTDictionary());
+      break;
   }
 }
 

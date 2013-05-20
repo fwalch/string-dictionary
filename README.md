@@ -4,6 +4,7 @@
 
 String dictionary implementations for RDF databases
 
+    art/              Adaptive Radix Tree by Viktor Leis
     bin/              Helper scripts and compiled executables
     data/             Sample data
     gmock/            googlemock source code
@@ -30,3 +31,5 @@ For the helper scripts, the following programs are used: bash, 7z, and wget or c
 
 Contains source code of [`googletest`](https://code.google.com/p/googletest) ([license terms](gtest/COPYING))
 and [`googlemock`](https://code.google.com/p/googlemock) ([license terms](gmock/COPYING)).
+
+Contains modified Adaptive Radix Tree source code by [Viktor Leis](http://www-db.in.tum.de/~leis/).

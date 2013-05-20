@@ -17,7 +17,9 @@
 static constexpr const char* typeStrings[] = {
   "dummy",
   "uncompressed",
-  "simple"
+  "simple",
+  "art",
+  "hash-art",
 };
 
 inline int usageMessage(const char* argv0) {
