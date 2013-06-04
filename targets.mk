@@ -22,13 +22,14 @@ $(eval $(1)_DEP_OBJECTS = $(foreach dep, $($(1)_DEPENDENCIES),$($(dep)_SRC_OBJEC
 $(eval $(1)_CXXFLAGS = $(call $(1)_cxxflags))
 $(eval $(1)_LDFLAGS = $(call $(1)_ldflags))
 $(eval $(1)_DEP_LDFLAGS = $(foreach dep, $($(1)_DEPENDENCIES),$($(dep)_LDFLAGS)))
-$(eval $(1)_DEP_INCLUDES = $(addprefix -I,$($(1)_DEPENDENCIES) $($(1)_DEPENDENCIES:%=%/include)))
+$(eval $(1)_DEP_INCLUDES = $(addprefix -isystem ,$($(1)_DEPENDENCIES) $($(1)_DEPENDENCIES:%=%/include)))
+$(eval $(1)_INCLUDES = -I $(1)/include)
 
 # Targets
 .SECONDEXPANSION:
 $($(1)_ALL_OBJECTS): $(OBJ_DIR)/%.o: %.cpp
 	$(CHECKDIR)
-	$(BUILDOBJ) $($(1)_CXXFLAGS) $($(1)_DEP_INCLUDES)
+	$(BUILDOBJ) $($(1)_INCLUDES) $($(1)_CXXFLAGS) $($(1)_DEP_INCLUDES)
 
 $($(1)_EXE_OBJECTS): $(EXE_DIR)/%: $(OBJ_DIR)/$(1)/%.o $($(1)_DEP_OBJECTS) $($(1)_ALL_OBJECTS)
 	$(CHECKDIR)

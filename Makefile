@@ -50,7 +50,7 @@ purge: clean
 # a "%" target for compiling and running
 # an executable (e.g. "compile-test"
 # and "test")
-SOURCES = src test
+SOURCES = src test tools
 include targets.mk
 
 # Include generated dependencies

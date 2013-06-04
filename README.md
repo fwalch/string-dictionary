@@ -29,7 +29,6 @@ For the helper scripts, the following programs are used: bash, 7z, and wget or c
 
 ## License notices
 
-Contains source code of [`googletest`](https://code.google.com/p/googletest) ([license terms](gtest/COPYING))
-and [`googlemock`](https://code.google.com/p/googlemock) ([license terms](gmock/COPYING)).
+Contains source code of [`googletest`](https://code.google.com/p/googletest) ([license terms](gtest/COPYING)), [`googlemock`](https://code.google.com/p/googlemock) ([license terms](gmock/COPYING)) and [Boost](http://www.boost.org) ([license terms](boost/LICENSE_1_0.txt)).
 
 Contains modified Adaptive Radix Tree source code by [Viktor Leis](http://www-db.in.tum.de/~leis/).
