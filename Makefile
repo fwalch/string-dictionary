@@ -37,7 +37,7 @@ BUILDOBJ = $(CXX) -c $(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
 BUILDEXE = $(CXX) $(LDFLAGS) $$^ -o $$@
 
 # Main targets
-all: compile-load
+all: compile-executables
 clean:
 	find $(OBJ_DIR) -type f -and -name '*.o' -delete 2> /dev/null || true
 	find $(EXE_DIR) -type f -and -not -name '*.sh' -delete 2> /dev/null || true
