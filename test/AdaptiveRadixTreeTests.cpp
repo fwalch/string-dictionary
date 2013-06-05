@@ -2,7 +2,7 @@
 #include "IndexART.hpp"
 #include "ReverseIndexART.hpp"
 
-unsigned long VALUES = 100;
+#define VALUES 100
 
 using namespace std;
 
@@ -22,7 +22,7 @@ TEST(IndexART, Integrity) {
 
 TEST(ReverseIndexART, Integrity) {
   IndexART cArt;
-  ReverseIndexART art(cArt);
+  IAReverseIndexART art(cArt);
 
   for (unsigned long i = 0; i < VALUES; i++) {
     cArt.insert(i, "Key " + to_string(i));
