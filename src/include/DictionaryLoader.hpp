@@ -20,6 +20,7 @@ class DictionaryLoader {
       ART,
       HashART
     };
+    static constexpr int DictionaryTypes = 5;
 
   private:
     std::string basePrefix;
