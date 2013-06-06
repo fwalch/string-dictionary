@@ -7,21 +7,17 @@
  * Base class for dictionary implementations.
  */
 class Dictionary {
-  public:
-    typedef unsigned long IdType;
-
   protected:
-    IdType nextId = 0;
+    uint64_t nextId = 0;
 
   public:
     virtual ~Dictionary() noexcept;
-    virtual void insert(std::string value) = 0;
-    /*virtual void remove(IdType id) = 0;
-    virtual void bulkInsert(std::string* values, size_t numberOfValues) = 0;
-    virtual bool lookup(std::string value, IdType& id) = 0;
-    virtual bool lookup(IdType id, std::string& value) = 0;*/
+    virtual uint64_t insert(std::string value) = 0;
+    virtual bool update(uint64_t& id, std::string value) = 0;
+    virtual bool lookup(std::string value, uint64_t& id) = 0;
+    virtual bool lookup(uint64_t id, std::string& value) = 0;
 
-    IdType size() const;
+    uint64_t size() const;
     virtual const char* name() const = 0;
 };
 

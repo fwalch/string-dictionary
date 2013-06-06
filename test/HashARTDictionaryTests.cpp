@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
-#include "SimpleDictionary.hpp"
+#include "HashARTDictionary.hpp"
 
-TEST(SimpleDictionary, Insert) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, Insert) {
+  HashARTDictionary dict;
 
   ASSERT_EQ(0, dict.size());
 
@@ -10,8 +10,8 @@ TEST(SimpleDictionary, Insert) {
   ASSERT_EQ(1, dict.size());
 }
 
-TEST(SimpleDictionary, InsertDuplicate) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, InsertDuplicate) {
+  HashARTDictionary dict;
 
   uint64_t id;
   id = dict.insert("value");
@@ -20,8 +20,8 @@ TEST(SimpleDictionary, InsertDuplicate) {
   ASSERT_EQ(1, dict.size());
 }
 
-TEST(SimpleDictionary, LookupByValue) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, LookupByValue) {
+  HashARTDictionary dict;
 
   uint64_t id = dict.insert("value");
   uint64_t lookupId;
@@ -30,15 +30,15 @@ TEST(SimpleDictionary, LookupByValue) {
   ASSERT_EQ(id, lookupId);
 }
 
-TEST(SimpleDictionary, LookupByNonexistentValue) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, LookupByNonexistentValue) {
+  HashARTDictionary dict;
 
   uint64_t lookupId;
   ASSERT_FALSE(dict.lookup("value", lookupId));
 }
 
-TEST(SimpleDictionary, LookupByID) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, LookupByID) {
+  HashARTDictionary dict;
 
   uint64_t id = dict.insert("value");
   std::string lookupValue;
@@ -47,15 +47,15 @@ TEST(SimpleDictionary, LookupByID) {
   ASSERT_EQ("value", lookupValue);
 }
 
-TEST(SimpleDictionary, LookupByNonexistentID) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, LookupByNonexistentID) {
+  HashARTDictionary dict;
 
   std::string lookupValue;
   ASSERT_FALSE(dict.lookup(0, lookupValue));
 }
 
-TEST(SimpleDictionary, Update) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, Update) {
+  HashARTDictionary dict;
 
   uint64_t id = dict.insert("value");
 
@@ -66,8 +66,8 @@ TEST(SimpleDictionary, Update) {
   ASSERT_EQ("newValue", lookupValue);
 }
 
-TEST(SimpleDictionary, UpdateDuplicate) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, UpdateDuplicate) {
+  HashARTDictionary dict;
 
   uint64_t id = dict.insert("value");
   uint64_t id2 = dict.insert("value");
@@ -84,16 +84,16 @@ TEST(SimpleDictionary, UpdateDuplicate) {
   ASSERT_EQ("value", lookupValue);
 }
 
-TEST(SimpleDictionary, UpdateNonexistent) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, UpdateNonexistent) {
+  HashARTDictionary dict;
 
   uint64_t id = 0;
   ASSERT_FALSE(dict.update(id, "newValue"));
 }
 
 /*
-TEST(SimpleDictionary, Remove) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, Remove) {
+  HashARTDictionary dict;
 
   uint64_t id = dict.insert("value");
 
@@ -101,8 +101,8 @@ TEST(SimpleDictionary, Remove) {
   ASSERT_EQ(0, dict.size());
 }
 
-TEST(SimpleDictionary, RemoveDuplicate) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, RemoveDuplicate) {
+  HashARTDictionary dict;
 
   uint64_t id = dict.insert("value");
   dict.insert("value");
@@ -114,8 +114,8 @@ TEST(SimpleDictionary, RemoveDuplicate) {
   ASSERT_EQ(0, dict.size());
 }
 
-TEST(SimpleDictionary, RemoveNonexistent) {
-  SimpleDictionary dict;
+TEST(HashARTDictionary, RemoveNonexistent) {
+  HashARTDictionary dict;
 
   ASSERT_FALSE(dict.remove(0));
 }

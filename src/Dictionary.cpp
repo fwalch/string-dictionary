@@ -3,6 +3,6 @@
 Dictionary::~Dictionary() noexcept {
 }
 
-Dictionary::IdType Dictionary::size() const {
+uint64_t Dictionary::size() const {
   return nextId;
 }

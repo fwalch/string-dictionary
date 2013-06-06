@@ -1,12 +1,31 @@
 #include "gtest/gtest.h"
 #include "DummyDictionary.hpp"
 
-TEST(DummyDictionary, Integrity) {
+// Test only that no errors occur
+
+TEST(DummyDictionary, Insert) {
   DummyDictionary dict;
 
-  ASSERT_EQ(0, dict.size());
-
-  // Should not store any values
   dict.insert("value");
-  ASSERT_EQ(0, dict.size());
+}
+
+TEST(DummyDictionary, LookupByID) {
+  DummyDictionary dict;
+
+  std::string value;
+  ASSERT_TRUE(dict.lookup(0, value));
+}
+
+TEST(DummyDictionary, LookupByValue) {
+  DummyDictionary dict;
+
+  uint64_t id;
+  ASSERT_TRUE(dict.lookup("value", id));
+}
+
+TEST(DummyDictionary, Update) {
+  DummyDictionary dict;
+
+  uint64_t id = 0;
+  ASSERT_TRUE(dict.update(id, "newValue"));
 }

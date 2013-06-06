@@ -40,12 +40,17 @@ class SimpleDictionary : public Dictionary {
     };
 
   private:
-    std::unordered_map<IdType, const char*> index;
-    std::unordered_map<const char*, IdType, hash, equal_to> reverseIndex;
+    std::unordered_map<uint64_t, const char*> index;
+    std::unordered_map<const char*, uint64_t, hash, equal_to> reverseIndex;
 
   public:
     ~SimpleDictionary() noexcept;
-    void insert(std::string value);
+
+    uint64_t insert(std::string value);
+    bool update(uint64_t& id, std::string value);
+    bool lookup(std::string value, uint64_t& id);
+    bool lookup(uint64_t id, std::string& value);
+
     const char* name() const {
       return "SimpleDictionary";
     }
