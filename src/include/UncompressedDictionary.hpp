@@ -18,6 +18,9 @@ class UncompressedDictionary : public Dictionary {
   public:
     ~UncompressedDictionary() noexcept { }
     void insert(std::string value);
+    const char* name() const {
+      return "UncompressedDictionary";
+    }
 };
 
 #endif

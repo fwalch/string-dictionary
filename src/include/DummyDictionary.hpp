@@ -10,6 +10,9 @@ class DummyDictionary : public Dictionary {
   public:
     ~DummyDictionary() noexcept { }
     void insert(std::string value);
+    const char* name() const {
+      return "DummyDictionary";
+    }
 };
 
 #endif

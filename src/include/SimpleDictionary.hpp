@@ -46,6 +46,9 @@ class SimpleDictionary : public Dictionary {
   public:
     ~SimpleDictionary() noexcept;
     void insert(std::string value);
+    const char* name() const {
+      return "SimpleDictionary";
+    }
 };
 
 #endif

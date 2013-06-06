@@ -1,7 +1,6 @@
 #ifndef H_ARTDictionary
 #define H_ARTDictionary
 
-#include <string>
 #include "IndexART.hpp"
 #include "ReverseIndexART.hpp"
 #include "Dictionary.hpp"
@@ -18,6 +17,9 @@ class ARTDictionary : public Dictionary {
     ARTDictionary() : reverseIndex(index) { }
     ~ARTDictionary() noexcept { }
     void insert(std::string value);
+    const char* name() const {
+      return "ARTDictionary";
+    }
 };
 
 #endif

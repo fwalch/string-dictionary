@@ -22,6 +22,7 @@ class Dictionary {
     virtual bool lookup(IdType id, std::string& value) = 0;*/
 
     IdType size() const;
+    virtual const char* name() const = 0;
 };
 
 #endif

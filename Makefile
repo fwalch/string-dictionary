@@ -15,7 +15,7 @@ endif
 
 # Define gcc flags
 ifeq ($(CXX),g++)
-	CXXFLAGS = -g -Wall -Wextra -Werror -pedantic --std=c++0x
+	CXXFLAGS = -g -Wall -Wextra -Werror -Wno-type-limits --std=c++0x
 	LDFLAGS =
 endif
 

@@ -22,6 +22,9 @@ class HashARTDictionary : public Dictionary {
     HashARTDictionary() : reverseIndex(index) { }
     ~HashARTDictionary() noexcept { }
     void insert(std::string value);
+    const char* name() const {
+      return "HashARTDictionary";
+    }
 };
 
 #endif
