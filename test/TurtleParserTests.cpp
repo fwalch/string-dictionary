@@ -18,7 +18,7 @@ TEST(TurtleParser, Comment) {
 }
 
 TEST(TurtleParser, BasePrefix) {
-  stringstream stream("@base <http://base/prefix#test> .\n<A>\t<B>\t<C> .\n");
+  stringstream stream("@base <http://base/prefix#test/> .\n<A>\t<B>\t<C> .\n");
   TurtleParser parser(stream);
 
   DictionaryMock mock;
@@ -30,7 +30,7 @@ TEST(TurtleParser, BasePrefix) {
 }
 
 TEST(TurtleParser, Prefix) {
-  stringstream stream("@prefix some: <http://prefix#test> .\n<A>\tsome:B\t<C> .\n");
+  stringstream stream("@prefix some: <http://prefix#test/> .\n<A>\tsome:B\t<C> .\n");
   TurtleParser parser(stream);
 
   DictionaryMock mock;
@@ -42,7 +42,7 @@ TEST(TurtleParser, Prefix) {
 }
 
 TEST(TurtleParser, MultiplePrefixes) {
-  stringstream stream("@base <http://base#prefix> .\n@prefix a: <http://second#prefix> .\n@prefix b: <http://third#prefix> .\n<Subject>\ta:Predicate\tb:Object .\n<Subject>\ta:Predicate\t<Object> .\n");
+  stringstream stream("@base <http://base#prefix/> .\n@prefix a: <http://second#prefix/> .\n@prefix b: <http://third#prefix/> .\n<Subject>\ta:Predicate\tb:Object .\n<Subject>\ta:Predicate\t<Object> .\n");
   TurtleParser parser(stream);
 
   DictionaryMock mock;

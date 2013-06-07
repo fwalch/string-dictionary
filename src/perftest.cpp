@@ -94,7 +94,7 @@ int main(int argc, const char** argv) {
       std::cout << "Now updating " << operations << " random triples." << std::endl;
       startClock = clock();
       for (uint64_t i = 0; i < operations; i++) {
-        assert(dict->update(identifiers[i], values[operations-i]));
+        assert(dict->update(identifiers[i], values[operations-1-i]));
       }
       ticks = clock() - startClock;
       std::cout << "Took " << ticks << " ticks." << std::endl;
@@ -130,7 +130,7 @@ inline int usageMessage(const char* argv0) {
 }
 
 inline bool hasDictionary(char counter) {
-  return counter < 5;
+  return counter < 6;
 }
 
 inline Dictionary* getDictionary(char counter) {

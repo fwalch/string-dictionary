@@ -31,13 +31,13 @@ void TurtleParser::loadInto(Dictionary* dictionary) {
       // Prefix
       if (boost::starts_with(line, BASE)) {
         assert(basePrefix.empty());
-        basePrefix = string(line.begin() + static_cast<long>(BASE.size()) + 2, line.end() - 3) + "/";
+        basePrefix = string(line.begin() + static_cast<long>(BASE.size()) + 2, line.end() - 3);
       }
       else {
         long pos = static_cast<long>(line.find_first_of(":"));
         string prefixName = string(line.begin() + static_cast<long>(PREFIX.size()) + 1, line.begin() + pos);
         string prefix = string(line.begin() + pos + 3, line.end() - 3);
-        prefixes.insert(make_pair(prefixName, prefix + "/"));
+        prefixes.insert(make_pair(prefixName, prefix));
       }
       continue;
     }
