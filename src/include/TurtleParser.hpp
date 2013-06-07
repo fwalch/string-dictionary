@@ -2,7 +2,7 @@
 #define H_TurtleParser
 
 #include <istream>
-#include "DictionaryLoader.hpp"
+#include "Dictionary.hpp"
 
 /**
  * Parses Turtle data from an input stream.
@@ -13,7 +13,7 @@ class TurtleParser {
 
   public:
     TurtleParser(std::istream& input);
-    void loadInto(DictionaryLoader& loader);
+    void loadInto(Dictionary* dictionary);
 };
 
 #endif

@@ -7,7 +7,12 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include "TurtleParser.hpp"
-#include "DictionaryLoader.hpp"
+
+#include "UncompressedDictionary.hpp"
+#include "DummyDictionary.hpp"
+#include "SimpleDictionary.hpp"
+#include "ARTDictionary.hpp"
+#include "HashARTDictionary.hpp"
 
 /**
  * @file
@@ -16,6 +21,8 @@
 
 std::ostream& operator<<(std::ostream &stream, const Dictionary* dict);
 inline int usageMessage(const char* argv0);
+Dictionary* getDictionary(char counter);
+bool hasDictionary(char counter);
 
 int main(int argc, const char** argv) {
   if (argc != 2) {
@@ -33,21 +40,19 @@ int main(int argc, const char** argv) {
   //TODO: automate memory usage by reading /proc
   // Load data from into all dictionaries in succession
   //TODO: generally implement this in a nicer way
-  for (int dictId = 0; dictId < DictionaryLoader::DictionaryTypes; dictId++) {
+  for (char counter = 0; hasDictionary(counter); counter++) {
     std::cout << "Base memory usage:" << std::endl;
     system(("ps -p " + std::to_string(getpid()) + " -orss=").c_str());
 
     int status;
     if (fork() == 0) {
-      DictionaryLoader loader(static_cast<DictionaryLoader::DictionaryType>(dictId));
-      Dictionary* dict = loader.getDictionary();
-
+      Dictionary* dict = getDictionary(counter);
       std::cout << "Start loading into " << dict << "." << std::endl;
       clock_t startClock = clock();
 
       // TODO: Bulk load part of data, rest later
       TurtleParser parser(file);
-      parser.loadInto(loader);
+      parser.loadInto(dict);
       clock_t ticks = clock() - startClock;
       std::cout << "Data import finished." << std::endl;
       std::cout << "Took " << ticks << " ticks." << std::endl;
@@ -60,7 +65,7 @@ int main(int argc, const char** argv) {
       std::cout << "Generating random IDs" << std::endl;
       std::random_device device;
       std::mt19937_64 engine(device());
-      std::uniform_int_distribution<uint64_t> dist(0, loader.getDictionary()->size()-1);
+      std::uniform_int_distribution<uint64_t> dist(0, dict->size()-1);
 
       uint64_t* identifiers = new uint64_t[operations];
       for (uint64_t i = 0; i < operations; i++) {
@@ -95,6 +100,7 @@ int main(int argc, const char** argv) {
 
       delete[] values;
       delete[] identifiers;
+      delete dict;
       std::cout << "---" << std::endl;
       exit(0);
     }
@@ -120,4 +126,24 @@ std::ostream& operator<<(std::ostream &stream, const Dictionary* dict) {
 inline int usageMessage(const char* argv0) {
   std::cerr << "Usage: " << argv0 << " [turtle file]" << std::endl;
   return 1;
+}
+
+inline bool hasDictionary(char counter) {
+  return counter < 5;
+}
+
+inline Dictionary* getDictionary(char counter) {
+  switch (counter) {
+    case 0:
+      return new DummyDictionary();
+    case 1:
+      return new UncompressedDictionary();
+    case 2:
+      return new SimpleDictionary();
+    case 3:
+      return new HashARTDictionary();
+    case 4:
+      return new ARTDictionary();
+  }
+  assert(false);
 }

@@ -3,7 +3,12 @@
 #include <string>
 #include <vector>
 #include "TurtleParser.hpp"
-#include "DictionaryLoader.hpp"
+
+#include "UncompressedDictionary.hpp"
+#include "DummyDictionary.hpp"
+#include "SimpleDictionary.hpp"
+#include "ARTDictionary.hpp"
+#include "HashARTDictionary.hpp"
 
 /**
  * @file
@@ -32,14 +37,14 @@ inline int usageMessage(const char* argv0) {
   return 1;
 }
 
-inline bool getDictionaryType(std::string typeString, DictionaryLoader::DictionaryType& type) {
-  for (size_t i = 0; i < sizeof(typeStrings)/sizeof(char*); i++) {
-    if (typeStrings[i] == typeString) {
-      type = static_cast<DictionaryLoader::DictionaryType>(i);
-      return true;
-    }
-  }
-  return false;
+inline Dictionary* getDictionary(std::string name) {
+  if (name == typeStrings[0]) return new DummyDictionary();
+  if (name == typeStrings[1]) return new UncompressedDictionary();
+  if (name == typeStrings[2]) return new SimpleDictionary();
+  if (name == typeStrings[3]) return new ARTDictionary();
+  if (name == typeStrings[4]) return new HashARTDictionary();
+
+  return nullptr;
 }
 
 int main(int argc, const char** argv) {
@@ -48,8 +53,8 @@ int main(int argc, const char** argv) {
   }
 
   // Verify that dictionary type is valid
-  DictionaryLoader::DictionaryType type;
-  if (!getDictionaryType(argv[1], type)) {
+  Dictionary* dict = getDictionary(argv[1]);
+  if (dict == nullptr) {
     return usageMessage(argv[0]);
   }
 
@@ -62,9 +67,10 @@ int main(int argc, const char** argv) {
   std::cout << "Reading Turtle data from '" << argv[2] << "' into " << argv[1] << " dictionary." << std::endl;
 
   TurtleParser parser(file);
-  DictionaryLoader loader(type);
-  parser.loadInto(loader);
+  parser.loadInto(dict);
   file.close();
+
+  delete dict;
 
   std::cout << "Done." << std::endl;
   std::cout << "Press Enter to exit...";
