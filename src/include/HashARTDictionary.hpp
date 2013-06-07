@@ -16,7 +16,7 @@ class HashARTDictionary : public Dictionary {
   private:
     typedef std::unordered_map<uint64_t, std::string> IndexType;
     IndexType index;
-    UMReverseIndexART reverseIndex;
+    ReverseIndexART<IndexType> reverseIndex;
 
   public:
     HashARTDictionary() : reverseIndex(index) { }

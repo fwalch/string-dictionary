@@ -5,7 +5,7 @@
 #include <vector>
 #include "AdaptiveRadixTree.hpp"
 
-class IAReverseIndexART;
+template<typename TLookup> class ReverseIndexART;
 
 class IndexART : public AdaptiveRadixTree {
   private:
@@ -19,7 +19,7 @@ class IndexART : public AdaptiveRadixTree {
     void insert(uint64_t key, std::string value);
     bool lookup(uint64_t key, std::string& value);
 
-  friend class IAReverseIndexART;
+  friend class ReverseIndexART<IndexART>;
 };
 
 #endif

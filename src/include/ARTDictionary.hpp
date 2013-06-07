@@ -11,7 +11,7 @@
 class ARTDictionary : public Dictionary {
   private:
     IndexART index;
-    IAReverseIndexART reverseIndex;
+    ReverseIndexART<IndexART> reverseIndex;
 
   public:
     ARTDictionary() : reverseIndex(index) { }
