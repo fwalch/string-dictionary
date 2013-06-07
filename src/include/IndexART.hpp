@@ -10,9 +10,10 @@ template<typename TLookup> class ReverseIndexART;
 class IndexART : public AdaptiveRadixTree {
   private:
     std::vector<std::string> values;
+    uint8_t lastKey[8];
 
   protected:
-    void loadKey(uintptr_t tid, uint8_t key[]);
+    uint8_t* loadKey(uintptr_t tid);
 
   public:
     IndexART();

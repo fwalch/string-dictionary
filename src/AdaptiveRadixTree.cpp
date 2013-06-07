@@ -235,11 +235,10 @@ AdaptiveRadixTree::Node* AdaptiveRadixTree::maximum(AdaptiveRadixTree::Node* nod
    throw; // Unreachable
 }
 
-bool AdaptiveRadixTree::leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+bool AdaptiveRadixTree::leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth) {
    // Check if the key of the leaf is equal to the searched key
    if (depth!=keyLength) {
-      uint8_t leafKey[maxKeyLength];
-      loadKey(getLeafValue(leaf),leafKey);
+      uint8_t* leafKey = loadKey(getLeafValue(leaf));
       for (unsigned i=depth;i<keyLength;i++)
          if (leafKey[i]!=key[i])
             return false;
@@ -247,15 +246,14 @@ bool AdaptiveRadixTree::leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,
    return true;
 }
 
-unsigned AdaptiveRadixTree::prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyLength) {
+unsigned AdaptiveRadixTree::prefixMismatch(Node* node,uint8_t key[],unsigned depth) {
    // Compare the key with the prefix of the node, return the number matching bytes
    unsigned pos;
    if (node->prefixLength>maxPrefixLength) {
       for (pos=0;pos<maxPrefixLength;pos++)
          if (key[depth+pos]!=node->prefix[pos])
             return pos;
-      uint8_t minKey[maxKeyLength];
-      loadKey(getLeafValue(minimum(node)),minKey);
+      uint8_t* minKey = loadKey(getLeafValue(minimum(node)));
       for (;pos<node->prefixLength;pos++)
          if (key[depth+pos]!=minKey[depth+pos])
             return pos;
@@ -267,7 +265,7 @@ unsigned AdaptiveRadixTree::prefixMismatch(Node* node,uint8_t key[],unsigned dep
    return pos;
 }
 
-AdaptiveRadixTree::Node* AdaptiveRadixTree::lookupValue(AdaptiveRadixTree::Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+AdaptiveRadixTree::Node* AdaptiveRadixTree::lookupValue(AdaptiveRadixTree::Node* node,uint8_t key[],unsigned keyLength,unsigned depth) {
    // Find the node with a matching key, optimistic version
 
    bool skippedPrefix=false; // Did we optimistically skip some prefix without checking it?
@@ -279,8 +277,7 @@ AdaptiveRadixTree::Node* AdaptiveRadixTree::lookupValue(AdaptiveRadixTree::Node*
 
          if (depth!=keyLength) {
             // Check leaf
-            uint8_t leafKey[maxKeyLength];
-            loadKey(getLeafValue(node),leafKey);
+            uint8_t* leafKey = loadKey(getLeafValue(node));
             for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++)
                if (leafKey[i]!=key[i])
                   return NULL;
@@ -305,17 +302,17 @@ AdaptiveRadixTree::Node* AdaptiveRadixTree::lookupValue(AdaptiveRadixTree::Node*
    return NULL;
 }
 
-AdaptiveRadixTree::Node* AdaptiveRadixTree::lookupValuePessimistic(AdaptiveRadixTree::Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+AdaptiveRadixTree::Node* AdaptiveRadixTree::lookupValuePessimistic(AdaptiveRadixTree::Node* node,uint8_t key[],unsigned keyLength,unsigned depth) {
    // Find the node with a matching key, alternative pessimistic version
 
    while (node!=NULL) {
       if (isLeaf(node)) {
-         if (leafMatches(node,key,keyLength,depth,maxKeyLength))
+         if (leafMatches(node,key,keyLength,depth))
             return node;
          return NULL;
       }
 
-      if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength)
+      if (prefixMismatch(node,key,depth)!=node->prefixLength)
          return NULL; else
          depth+=node->prefixLength;
 
@@ -338,7 +335,7 @@ void AdaptiveRadixTree::copyPrefix(AdaptiveRadixTree::Node* src,AdaptiveRadixTre
    memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
 }
 
-void AdaptiveRadixTree::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+void AdaptiveRadixTree::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value) {
    // Insert the leaf value into the tree
 
    if (node==NULL) {
@@ -348,8 +345,7 @@ void AdaptiveRadixTree::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsi
 
    if (isLeaf(node)) {
       // Replace leaf with Node4 and store both leaves in it
-      uint8_t existingKey[maxKeyLength];
-      loadKey(getLeafValue(node),existingKey);
+      uint8_t* existingKey = loadKey(getLeafValue(node));
       unsigned newPrefixLength=0;
       while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
          newPrefixLength++;
@@ -366,7 +362,7 @@ void AdaptiveRadixTree::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsi
 
    // Handle prefix of inner node
    if (node->prefixLength) {
-      unsigned mismatchPos=prefixMismatch(node,key,depth,maxKeyLength);
+      unsigned mismatchPos=prefixMismatch(node,key,depth);
       if (mismatchPos!=node->prefixLength) {
          // Prefix differs, create new node
          Node4* newNode=new Node4();
@@ -380,8 +376,7 @@ void AdaptiveRadixTree::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsi
             memmove(node->prefix,node->prefix+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
          } else {
             node->prefixLength-=(mismatchPos+1);
-            uint8_t minKey[maxKeyLength];
-            loadKey(getLeafValue(minimum(node)),minKey);
+            uint8_t* minKey = loadKey(getLeafValue(minimum(node)));
             insertNode4(newNode,nodeRef,minKey[depth+mismatchPos],node);
             memmove(node->prefix,minKey+depth+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
          }
@@ -394,7 +389,7 @@ void AdaptiveRadixTree::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsi
    // Recurse
    Node** child=findChild(node,key[depth]);
    if (*child) {
-      insertValue(*child,child,key,depth+1,value,maxKeyLength);
+      insertValue(*child,child,key,depth+1,value);
       return;
    }
 
@@ -492,7 +487,7 @@ void AdaptiveRadixTree::insertNode256(Node256* node,uint8_t keyByte,Node* child)
 
 // Forward references
 
-void AdaptiveRadixTree::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+void AdaptiveRadixTree::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth) {
    // Delete a leaf from a tree
 
    if (!node)
@@ -500,20 +495,20 @@ void AdaptiveRadixTree::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned k
 
    if (isLeaf(node)) {
       // Make sure we have the right leaf
-      if (leafMatches(node,key,keyLength,depth,maxKeyLength))
+      if (leafMatches(node,key,keyLength,depth))
          *nodeRef=NULL;
       return;
    }
 
    // Handle prefix
    if (node->prefixLength) {
-      if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength)
+      if (prefixMismatch(node,key,depth)!=node->prefixLength)
          return;
       depth+=node->prefixLength;
    }
 
    Node** child=findChild(node,key[depth]);
-   if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
+   if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth)) {
       // Leaf found, delete it in inner node
       switch (node->type) {
          case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
@@ -523,7 +518,7 @@ void AdaptiveRadixTree::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned k
       }
    } else {
       //Recurse
-      erase(*child,child,key,keyLength,depth+1,maxKeyLength);
+      erase(*child,child,key,keyLength,depth+1);
    }
 }
 
