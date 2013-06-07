@@ -34,7 +34,7 @@ class DictionaryLoader {
     virtual void setBasePrefix(std::string prefix);
     virtual void addPrefix(std::string id, std::string prefix);
     virtual void addString(std::string prefixId, std::string value);
-    virtual const Dictionary* getDictionary();
+    virtual Dictionary* getDictionary();
 };
 
 #endif

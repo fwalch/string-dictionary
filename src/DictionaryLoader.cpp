@@ -26,7 +26,7 @@ DictionaryLoader::DictionaryLoader(DictionaryType type) {
   }
 }
 
-const Dictionary* DictionaryLoader::getDictionary() {
+Dictionary* DictionaryLoader::getDictionary() {
   return dictionary.get();
 }
 
