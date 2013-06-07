@@ -9,6 +9,7 @@
 #include "SimpleDictionary.hpp"
 #include "ARTDictionary.hpp"
 #include "HashARTDictionary.hpp"
+#include "BTreeDictionary.hpp"
 
 /**
  * @file
@@ -25,6 +26,7 @@ static constexpr const char* typeStrings[] = {
   "simple",
   "art",
   "hash-art",
+  "btree",
 };
 
 inline int usageMessage(const char* argv0) {
@@ -43,6 +45,7 @@ inline Dictionary* getDictionary(std::string name) {
   if (name == typeStrings[2]) return new SimpleDictionary();
   if (name == typeStrings[3]) return new ARTDictionary();
   if (name == typeStrings[4]) return new HashARTDictionary();
+  if (name == typeStrings[5]) return new BTreeDictionary();
 
   return nullptr;
 }

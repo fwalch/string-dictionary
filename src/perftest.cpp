@@ -13,6 +13,7 @@
 #include "SimpleDictionary.hpp"
 #include "ARTDictionary.hpp"
 #include "HashARTDictionary.hpp"
+#include "BTreeDictionary.hpp"
 
 /**
  * @file
@@ -144,6 +145,8 @@ inline Dictionary* getDictionary(char counter) {
       return new HashARTDictionary();
     case 4:
       return new ARTDictionary();
+    case 5:
+      return new BTreeDictionary();
   }
   assert(false);
 }
