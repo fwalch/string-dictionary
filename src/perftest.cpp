@@ -38,7 +38,7 @@ int main(int argc, const char** argv) {
 
   std::cout << "Executing performance tests using Turtle data from '" << argv[1] << "'." << std::endl;
 
-  //TODO: automate memory usage by reading /proc
+  //TODO: automate memory usage by reading /proc/*/smaps
   // Load data from into all dictionaries in succession
   //TODO: generally implement this in a nicer way
   for (char counter = 0; hasDictionary(counter); counter++) {

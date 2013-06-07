@@ -15,7 +15,7 @@ void IndexART::loadKey(uintptr_t tid, uint8_t key[]) {
 void IndexART::insert(uint64_t key, string value) {
   uint8_t keyArray[8];
   loadKey(key, keyArray);
-  insertValue(tree, &tree, keyArray, 0, values.size(), 8);
+  insertValue(tree, &tree, keyArray, 0, key, 8);
   values.push_back(value);
 }
 
