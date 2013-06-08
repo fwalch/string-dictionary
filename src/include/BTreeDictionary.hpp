@@ -16,11 +16,11 @@ class BTreeDictionary : public Dictionary {
     };
 
   private:
-    btree::btree_map<uint64_t, const char*> index;
+    btree::btree_map<uint64_t, std::string> index;
     btree::btree_map<const char*, uint64_t, compare> reverseIndex;
 
   public:
-    ~BTreeDictionary() noexcept;
+    ~BTreeDictionary() noexcept { }
 
     uint64_t insert(std::string value);
     bool update(uint64_t& id, std::string value);

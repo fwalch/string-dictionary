@@ -4,6 +4,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 uint64_t DummyDictionary::insert(std::string value) {
+  nextId++;
   return 0;
 }
 

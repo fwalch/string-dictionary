@@ -6,9 +6,8 @@ uint64_t UncompressedDictionary::insert(string value) {
   auto reverseIt = reverseIndex.find(value);
 
   if (reverseIt == reverseIndex.end()) {
-    // String not in dictionary
-    index.insert(make_pair(nextId, value));
-    reverseIndex.insert(make_pair(value, nextId));
+    index[nextId] = value;
+    reverseIndex[value] = nextId;
     return nextId++;
   }
 

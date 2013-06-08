@@ -6,20 +6,12 @@ int BTreeDictionary::compare::operator()(const char* lhs, const char* rhs) const
   return strcmp(lhs, rhs);
 }
 
-BTreeDictionary::~BTreeDictionary() noexcept {
-  for (auto it : reverseIndex) {
-    delete[] it.first;
-  }
-}
-
 uint64_t BTreeDictionary::insert(string value) {
   auto reverseIt = reverseIndex.find(value.c_str());
 
   if (reverseIt == reverseIndex.end()) {
-    char* insertValue = new char[value.length() + 1];
-    memcpy(insertValue, value.c_str(), value.length() + 1);
-    index[nextId] = insertValue;
-    reverseIndex[insertValue] = nextId;
+    index[nextId] = value;
+    reverseIndex[index[nextId].c_str()] = nextId;
     return nextId++;
   }
 

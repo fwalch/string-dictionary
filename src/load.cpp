@@ -3,13 +3,7 @@
 #include <string>
 #include <vector>
 #include "TurtleParser.hpp"
-
-#include "UncompressedDictionary.hpp"
-#include "DummyDictionary.hpp"
-#include "SimpleDictionary.hpp"
-#include "ARTDictionary.hpp"
-#include "HashARTDictionary.hpp"
-#include "BTreeDictionary.hpp"
+#include "Dictionaries.hpp"
 
 /**
  * @file
