@@ -2,7 +2,7 @@
 #define H_Dictionaries
 
 namespace Dictionaries {
-  static constexpr char Count = 5;
+  static constexpr char Count = 6;
 }
 
 #include "DummyDictionary.hpp"
@@ -11,6 +11,7 @@ namespace Dictionaries {
 #include "HashARTDictionary.hpp"
 #include "ARTDictionary.hpp"
 #include "BTreeDictionary.hpp"
+#include "BPlusTreeDictionary.hpp"
 
 std::ostream& operator<<(std::ostream &stream, const Dictionary* dict);
 

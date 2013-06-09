@@ -54,7 +54,10 @@ void PerformanceTestRunner::run(istream& tupleStream) {
       std::cout << "Looking up " << numberOfOperations << " strings by value." << std::endl;
       start = clock();
       for (uint64_t i = 0; i < numberOfOperations; i++) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
         uint64_t id;
+#pragma GCC diagnostic pop
         assert(dict->lookup(values[i], id));
       }
       std::cout << "Finished in " << diff(start) << " sec." << std::endl;
@@ -96,6 +99,8 @@ inline Dictionary* getDictionary(char counter) {
       return new ARTDictionary();
     case 4:
       return new BTreeDictionary();
+    case 5:
+      return new BPlusTreeDictionary();
   }
   assert(false);
   return nullptr;

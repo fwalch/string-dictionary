@@ -1,13 +1,13 @@
 #include <cstring>
-#include "BTreeDictionary.hpp"
+#include "BPlusTreeDictionary.hpp"
 
 using namespace std;
 
-int BTreeDictionary::compare::operator()(const char* lhs, const char* rhs) const {
+int BPlusTreeDictionary::compare::operator()(const char* lhs, const char* rhs) const {
   return strcmp(lhs, rhs);
 }
 
-uint64_t BTreeDictionary::insert(string value) {
+uint64_t BPlusTreeDictionary::insert(string value) {
   auto reverseIt = reverseIndex.find(value.c_str());
 
   if (reverseIt == reverseIndex.end()) {
@@ -19,7 +19,7 @@ uint64_t BTreeDictionary::insert(string value) {
   return reverseIt->second;
 }
 
-bool BTreeDictionary::update(uint64_t& id, std::string value) {
+bool BPlusTreeDictionary::update(uint64_t& id, std::string value) {
   auto it = index.find(id);
 
   if (it == index.end()) {
@@ -32,7 +32,7 @@ bool BTreeDictionary::update(uint64_t& id, std::string value) {
   return true;
 }
 
-bool BTreeDictionary::lookup(std::string value, uint64_t& id) {
+bool BPlusTreeDictionary::lookup(std::string value, uint64_t& id) {
   auto reverseIt = reverseIndex.find(value.c_str());
 
   if (reverseIt == reverseIndex.end()) {
@@ -43,7 +43,7 @@ bool BTreeDictionary::lookup(std::string value, uint64_t& id) {
   return true;
 }
 
-bool BTreeDictionary::lookup(uint64_t id, std::string& value) {
+bool BPlusTreeDictionary::lookup(uint64_t id, std::string& value) {
   auto it = index.find(id);
 
   if (it == index.end()) {
