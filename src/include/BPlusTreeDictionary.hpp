@@ -17,7 +17,8 @@ class BPlusTreeDictionary : public Dictionary {
 
   private:
     stx::btree_map<uint64_t, std::string> index;
-    stx::btree_map<const char*, uint64_t, compare> reverseIndex;
+    //TODO: when using const char* as key, strange memory usage?
+    stx::btree_map<std::string, uint64_t> reverseIndex;
 
   public:
     ~BPlusTreeDictionary() noexcept { }

@@ -12,7 +12,7 @@ uint64_t BPlusTreeDictionary::insert(string value) {
 
   if (reverseIt == reverseIndex.end()) {
     index[nextId] = value;
-    reverseIndex[index[nextId].c_str()] = nextId;
+    reverseIndex[value] = nextId;
     return nextId++;
   }
 

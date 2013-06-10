@@ -1,4 +1,3 @@
-#include <cassert>
 #include "PerformanceTestRunner.hpp"
 #include "TurtleParser.hpp"
 #include "Dictionaries.hpp"
@@ -32,47 +31,44 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 
       clock_t start;
 
-      std::cout << "Inserting " << numberOfValues << " strings into " << dict << "." << std::endl;
+      cout << "Inserting " << numberOfValues << " strings into " << dict << "." << endl;
       start = clock();
       TurtleParser parser(tupleStream);
       parser.loadInto(dict);
-      std::cout << "Finished in " << diff(start) << " sec." << std::endl;
+      cout << "Finished in " << diff(start) << " sec." << endl;
 
-      std::cout << "Memory usage:" << std::endl;
-      system(("ps -p " + std::to_string(getpid()) + " -orss=").c_str());
+      cout << "Memory usage:" << endl;
+      system(("ps -p " + to_string(getpid()) + " -orss=").c_str());
 
       uint64_t* identifiers = getRandomIDs(numberOfOperations, dict->size());
 
-      std::cout << "Looking up " << numberOfOperations << " strings by ID." << std::endl;
-      std::string* values = new std::string[numberOfOperations];
+      cout << "Looking up " << numberOfOperations << " strings by ID." << endl;
+      string* values = new string[numberOfOperations];
       start = clock();
       for (uint64_t i = 0; i < numberOfOperations; i++) {
-        assert(dict->lookup(identifiers[i], values[i]));
+        dict->lookup(identifiers[i], values[i]);
       }
-      std::cout << "Finished in " << diff(start) << " sec." << std::endl;
+      cout << "Finished in " << diff(start) << " sec." << endl;
 
-      std::cout << "Looking up " << numberOfOperations << " strings by value." << std::endl;
+      cout << "Looking up " << numberOfOperations << " strings by value." << endl;
       start = clock();
       for (uint64_t i = 0; i < numberOfOperations; i++) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
         uint64_t id;
-#pragma GCC diagnostic pop
-        assert(dict->lookup(values[i], id));
+        dict->lookup(values[i], id);
       }
-      std::cout << "Finished in " << diff(start) << " sec." << std::endl;
+      cout << "Finished in " << diff(start) << " sec." << endl;
 
-      std::cout << "Updating " << numberOfOperations << " strings." << std::endl;
+      cout << "Updating " << numberOfOperations << " strings." << endl;
       start = clock();
       for (uint64_t i = 0; i < numberOfOperations; i++) {
-        assert(dict->update(identifiers[i], values[numberOfOperations-1-i]));
+        dict->update(identifiers[i], values[numberOfOperations-1-i]);
       }
-      std::cout << "Finished in " << diff(start) << " sec." << std::endl;
+      cout << "Finished in " << diff(start) << " sec." << endl;
 
       delete[] values;
       delete[] identifiers;
       delete dict;
-      std::cout << "---" << std::endl;
+      cout << "---" << endl;
       exit(0);
     }
     else {
@@ -120,9 +116,9 @@ inline void resetStream(istream& tupleStream) {
 }
 
 inline uint64_t* getRandomIDs(uint64_t numberOfOperations, uint64_t numberOfValues) {
-  std::random_device device;
-  std::mt19937_64 engine(device());
-  std::uniform_int_distribution<uint64_t> dist(0, numberOfValues-1);
+  random_device device;
+  mt19937_64 engine(device());
+  uniform_int_distribution<uint64_t> dist(0, numberOfValues-1);
 
   uint64_t* identifiers = new uint64_t[numberOfOperations];
   for (uint64_t i = 0; i < numberOfOperations; i++) {
