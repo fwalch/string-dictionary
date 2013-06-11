@@ -7,3 +7,9 @@ test_executables = test
 test_dependencies = src
 test_libraries = gmock gtest btree b+tree boost
 test_cxxflags = -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-weak-vtables
+
+test: compile-test
+	$(EXE_DIR)/test
+
+build: clean debug-test
+	valgrind --error-exitcode=2 $(EXE_DIR)/test

@@ -19,30 +19,33 @@ ifeq ($(CXX),g++)
 	LDFLAGS =
 endif
 
-# Define build types
-ifdef debug
-	CXXFLAGS += -O0
-	LDFLAGS +=
-else
-	CXXFLAGS += -O3
-	LDFLAGS +=
-endif
+# Build type flags
+DBGFLAGS := -O0 -DDEBUG
+RELFLAGS := -O3
 
 # Configuration variables
-OBJ_DIR = obj
-EXE_DIR = bin
+OBJ_DIR := obj
+EXE_DIR := bin
 
 CHECKDIR = mkdir -p $$(dir $$@)
 BUILDOBJ = $(CXX) -c $(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
 BUILDEXE = $(CXX) $(LDFLAGS) $$^ -o $$@
 
+# Default build type
+BUILD = REL
+
 # Main targets
 all: compile-executables
+debug: debug-executables
 clean:
 	find $(OBJ_DIR) -type f -and -name '*.o' -delete 2> /dev/null || true
 	find $(EXE_DIR) -type f -and -not -name '*.sh' -delete 2> /dev/null || true
 purge: clean
 	rm -rf $(OBJ_DIR)
+
+# Helper targets
+set-debug:
+	$(eval BUILD = DBG)
 
 # Generate targets for source trees
 #

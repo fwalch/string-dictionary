@@ -46,7 +46,9 @@ EXECUTABLES=
 $(foreach source, $(SOURCES), $(eval $(call generate_targets,$(source))))
 
 # General targets
-$(EXECUTABLES:%=compile-%): compile-%: $(EXE_DIR)/%
-$(EXECUTABLES): %: $(EXE_DIR)/%
-	./$<
+$(EXECUTABLES:%=compile-%): compile-%: prepare-compile $(EXE_DIR)/%
+$(EXECUTABLES:%=debug-%): debug-%: set-debug compile-%
+prepare-compile:
+	$(eval CXXFLAGS += $($(BUILD)FLAGS))
 compile-executables: $(EXECUTABLES:%=compile-%)
+debug-executables: $(EXECUTABLES:%=debug-%)
