@@ -26,7 +26,7 @@ To execute the unit tests, run `make test`.
 
 ## Requirements
 
-Tested on Arch Linux x64 with Clang 3.2 and GCC 4.8.1. Windows is not supported, though other platforms might work.
+Tested on Arch Linux x64 with Clang 3.3 and GCC 4.8.1. Windows is not supported, though other platforms might work.
 For the helper scripts, the following programs are used: bash, 7z, and wget or curl.
 
 ## License notices
