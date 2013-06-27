@@ -248,7 +248,6 @@ inline void lookup(Dictionary* dict, vector<string> values) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 inline void rangeLookup(Dictionary* dict, vector<uint64_t> ids) {
-#pragma GCC diagnostic pop
   for (size_t i = 0; i < ids.size(); i += 2) {
     uint64_t from = ids[i];
     uint64_t to = ids[i+1];
@@ -262,16 +261,17 @@ inline void rangeLookup(Dictionary* dict, vector<uint64_t> ids) {
     // dict->rangeLookup(from, to);
   }
 }
+#pragma GCC diagnostic pop
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 inline void rangeLookup(Dictionary* dict, vector<string> prefixes) {
-#pragma GCC diagnostic pop
   for (string prefix : prefixes) {
     //TODO: range lookup
     // dict->rangeLookup(prefix);
   }
 }
+#pragma GCC diagnostic pop
 
 inline void update(Dictionary* dict, vector<uint64_t> ids, vector<string> values) {
   for (size_t i = 0; i < ids.size(); i++) {
