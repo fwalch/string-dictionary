@@ -2,7 +2,6 @@
 #define H_PerformanceTestRunner
 
 #include <istream>
-#include "DummyDictionary.hpp"
 
 class PerformanceTestRunner {
   public:

@@ -32,7 +32,7 @@ int main(int argc, const char** argv) {
   testRunner.run(file);
   file.close();
 
-  std::cout << "Done." << std::endl;
+  std::cout << "Performance tests finished." << std::endl;
 
   return 0;
 }
