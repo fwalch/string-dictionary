@@ -53,7 +53,7 @@ set-debug:
 # a "%" target for compiling and running
 # an executable (e.g. "compile-test"
 # and "test")
-SOURCES = src test tools
+SOURCES = src test
 include targets.mk
 
 # Include generated dependencies
