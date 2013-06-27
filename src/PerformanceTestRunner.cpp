@@ -25,12 +25,15 @@ inline unordered_set<string> getValues(istream& tupleStream);
 inline vector<uint64_t> getRandomIDs(uint64_t numberOfRandomIDs, uint64_t lower, uint64_t upper);
 inline vector<string> getValues(vector<uint64_t> randomIDs, unordered_set<string> values);
 inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, unordered_set<string> values);
+inline vector<string> getPrefixes(vector<uint64_t> randomIDs, unordered_set<string> values);
 inline void splitForBulkLoad(vector<uint64_t> insertIDs, unordered_set<string> values, vector<string>& bulkLoadValues, vector<string>& insertValues);
 
 inline void bulkLoad(Dictionary*, vector<string>);
 inline void insert(Dictionary*, vector<string>);
 inline void lookup(Dictionary*, vector<uint64_t>);
 inline void lookup(Dictionary*, vector<string>);
+inline void rangeLookup(Dictionary*, vector<uint64_t>);
+inline void rangeLookup(Dictionary*, vector<string>);
 inline void update(Dictionary*, vector<uint64_t>, vector<string>);
 
 inline float diff(clock_t start);
@@ -48,6 +51,7 @@ void PerformanceTestRunner::run(istream& tupleStream) {
   cout << "Generating random numbers..." << endl;
   vector<uint64_t> insertIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> lookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
+  vector<uint64_t> rangeLookupIDs = getRandomIDs(2*numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> neLookupIDs = getRandomIDs(numberOfOperations, numberOfUniqueValues, 2*numberOfUniqueValues);
   vector<uint64_t> updateIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
 
@@ -57,12 +61,15 @@ void PerformanceTestRunner::run(istream& tupleStream) {
   splitForBulkLoad(insertIDs, uniqueValues, bulkLoadValues, insertValues);
 
   vector<uint64_t> valueLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
+  vector<uint64_t> valueRangeLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> neValueLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> valueUpdateIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<string> lookupValues = getValues(valueLookupIDs, uniqueValues);
+  vector<string> rangeLookupValues = getPrefixes(valueRangeLookupIDs, uniqueValues);
   vector<string> neLookupValues = getNonExistingValues(neValueLookupIDs, uniqueValues);
   vector<string> updateValues = getValues(valueUpdateIDs, uniqueValues);
 
+  valueRangeLookupIDs.clear();
   neValueLookupIDs.clear();
   valueLookupIDs.clear();
   valueUpdateIDs.clear();
@@ -100,6 +107,16 @@ void PerformanceTestRunner::run(istream& tupleStream) {
     cout << "Looking up " << numberOfOperations << " strings by value." << endl;
     start = clock();
     lookup(dict, lookupValues);
+    cout << " Finished in " << diff(start) << " sec." << endl;
+
+    cout << "Executing " << numberOfOperations << " range lookups by ID." << endl;
+    start = clock();
+    rangeLookup(dict, rangeLookupIDs);
+    cout << " Finished in " << diff(start) << " sec." << endl;
+
+    cout << "Executing " << numberOfOperations << " range lookups by value." << endl;
+    start = clock();
+    rangeLookup(dict, rangeLookupValues);
     cout << " Finished in " << diff(start) << " sec." << endl;
 
     cout << "Looking up " << numberOfOperations << " non-existing strings by ID." << endl;
@@ -205,7 +222,7 @@ inline float diff(clock_t start) {
 }
 
 inline void bulkLoad(Dictionary* dict, vector<string> values) {
-  //TODO
+  //TODO: bulk load
   insert(dict, values);
 }
 
@@ -225,6 +242,34 @@ inline void lookup(Dictionary* dict, vector<string> values) {
   for (auto value : values) {
     uint64_t id;
     dict->lookup(value, id);
+  }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+inline void rangeLookup(Dictionary* dict, vector<uint64_t> ids) {
+#pragma GCC diagnostic pop
+  for (size_t i = 0; i < ids.size(); i += 2) {
+    uint64_t from = ids[i];
+    uint64_t to = ids[i+1];
+    // Swap into correct order
+    if (from > to) {
+      uint64_t tmp = from;
+      from = to;
+      to = tmp;
+    }
+    //TODO: range lookup
+    // dict->rangeLookup(from, to);
+  }
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+inline void rangeLookup(Dictionary* dict, vector<string> prefixes) {
+#pragma GCC diagnostic pop
+  for (string prefix : prefixes) {
+    //TODO: range lookup
+    // dict->rangeLookup(prefix);
   }
 }
 
@@ -285,4 +330,20 @@ inline uint64_t getMemoryUsage() {
   }
   smaps.close();
   return memory;
+}
+
+inline vector<string> getPrefixes(vector<uint64_t> randomIDs, unordered_set<string> values) {
+  //TODO
+  vector<string> valueVector(values.begin(), values.end());
+  vector<string> result;
+  result.reserve(randomIDs.size());
+
+  random_device device;
+  mt19937_64 engine(device());
+
+  for (uint64_t id : randomIDs) {
+    uniform_int_distribution<uint64_t> dist(3, valueVector[id].size());
+    result.push_back(valueVector[id].substr(0, dist(engine)));
+  }
+  return result;
 }
