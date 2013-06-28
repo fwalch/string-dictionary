@@ -14,6 +14,17 @@ uint64_t UncompressedDictionary::insert(string value) {
   return reverseIt->second;
 }
 
+bool UncompressedDictionary::bulkInsert(size_t size, string* values) {
+  index.reserve(index.size() + size);
+  reverseIndex.reserve(reverseIndex.size() + size);
+
+  for (size_t i = 0; i < size; i++) {
+    insert(values[i]);
+  }
+
+  return true;
+}
+
 bool UncompressedDictionary::update(uint64_t& id, std::string value) {
   auto it = index.find(id);
 

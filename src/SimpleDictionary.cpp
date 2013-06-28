@@ -24,6 +24,17 @@ uint64_t SimpleDictionary::insert(string value) {
   return reverseIt->second;
 }
 
+bool SimpleDictionary::bulkInsert(size_t size, string* values) {
+  index.reserve(index.size() + size);
+  reverseIndex.reserve(reverseIndex.size() + size);
+
+  for (size_t i = 0; i < size; i++) {
+    insert(values[i]);
+  }
+
+  return true;
+}
+
 bool SimpleDictionary::update(uint64_t& id, std::string value) {
   auto it = index.find(id);
 

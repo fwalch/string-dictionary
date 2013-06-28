@@ -3,5 +3,9 @@
 !/bin/*.sh
 /data/
 
-.vim_extra_conf.vim
-.ycm_extra_conf.py*
+/.vim_extra_conf.vim
+/.ycm_extra_conf.py*
+
+/results
+/bin/run.sh
+/bin/run.server.sh

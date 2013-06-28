@@ -22,6 +22,7 @@ class HashARTDictionary : public Dictionary {
     HashARTDictionary() : reverseIndex(index) { }
     ~HashARTDictionary() noexcept { }
 
+    bool bulkInsert(size_t size, std::string* values);
     uint64_t insert(std::string value);
     bool update(uint64_t& id, std::string value);
     bool lookup(std::string value, uint64_t& id);

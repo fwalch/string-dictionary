@@ -173,6 +173,10 @@ class PerfTestDictionary : public Dictionary {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+    bool bulkInsert(size_t size, std::string* v) {
+      return false;
+    }
+
     bool update(uint64_t& id, std::string value) {
       return false;
     }
@@ -222,8 +226,7 @@ inline float diff(clock_t start) {
 }
 
 inline void bulkLoad(Dictionary* dict, vector<string> values) {
-  //TODO: bulk load
-  insert(dict, values);
+  dict->bulkInsert(values.size(), &values[0]);
 }
 
 inline void insert(Dictionary* dict, vector<string> values) {

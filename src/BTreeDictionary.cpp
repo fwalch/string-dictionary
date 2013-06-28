@@ -19,6 +19,14 @@ uint64_t BTreeDictionary::insert(string value) {
   return reverseIt->second;
 }
 
+bool BTreeDictionary::bulkInsert(size_t size, string* values) {
+  for (size_t i = 0; i < size; i++) {
+    insert(values[i]);
+  }
+
+  return true;
+}
+
 bool BTreeDictionary::update(uint64_t& id, std::string value) {
   auto it = index.find(id);
 

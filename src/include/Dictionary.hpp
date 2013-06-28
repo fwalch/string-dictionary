@@ -12,6 +12,8 @@ class Dictionary {
 
   public:
     virtual ~Dictionary() noexcept;
+
+    virtual bool bulkInsert(size_t size, std::string* values) = 0;
     virtual uint64_t insert(std::string value) = 0;
     virtual bool update(uint64_t& id, std::string value) = 0;
     virtual bool lookup(std::string value, uint64_t& id) = 0;

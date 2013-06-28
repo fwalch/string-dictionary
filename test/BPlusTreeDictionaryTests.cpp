@@ -10,6 +10,18 @@ TEST(BPlusTreeDictionary, Insert) {
   ASSERT_EQ(1, dict.size());
 }
 
+TEST(BPlusTreeDictionary, BulkInsert) {
+  BPlusTreeDictionary dict;
+  std::string values[] = {
+    "a",
+    "b"
+  };
+
+  ASSERT_EQ(0, dict.size());
+  ASSERT_TRUE(dict.bulkInsert(2, values));
+  ASSERT_EQ(2, dict.size());
+}
+
 TEST(BPlusTreeDictionary, InsertDuplicate) {
   BPlusTreeDictionary dict;
 

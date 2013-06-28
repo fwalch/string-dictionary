@@ -9,6 +9,16 @@ TEST(DummyDictionary, Insert) {
   dict.insert("value");
 }
 
+TEST(DummyDictionary, BulkInsert) {
+  DummyDictionary dict;
+  std::string values[] = {
+    "a",
+    "b"
+  };
+
+  dict.bulkInsert(2, values);
+}
+
 TEST(DummyDictionary, LookupByID) {
   DummyDictionary dict;
 

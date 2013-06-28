@@ -13,6 +13,14 @@ uint64_t ARTDictionary::insert(string value) {
   return id;
 }
 
+bool ARTDictionary::bulkInsert(size_t size, string* values) {
+  for (size_t i = 0; i < size; i++) {
+    insert(values[i]);
+  }
+
+  return true;
+}
+
 bool ARTDictionary::update(uint64_t& id, std::string value) {
   std::string storedValue;
   if (!index.lookup(id, storedValue)) {

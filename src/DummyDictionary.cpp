@@ -3,6 +3,11 @@
 // Seems to work with clang, too
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+bool DummyDictionary::bulkInsert(size_t size, std::string* values) {
+  nextId += size;
+  return true;
+}
+
 uint64_t DummyDictionary::insert(std::string value) {
   nextId++;
   return 0;
