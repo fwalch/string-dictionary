@@ -3,5 +3,4 @@ src_sources = Exception.cpp TurtleParser.cpp Dictionary.cpp DummyDictionary.cpp 
 							HashARTDictionary.cpp BTreeDictionary.cpp PerformanceTestRunner.cpp \
 							Dictionaries.cpp BPlusTreeDictionary.cpp
 src_executables = load perftest
-src_libraries = btree b+tree boost
-
+src_libraries = btree b+tree boost libart
