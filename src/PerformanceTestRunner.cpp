@@ -4,7 +4,6 @@
 #include <unordered_set>
 #include <vector>
 #include <string>
-#include <unistd.h>
 #include <fstream>
 #include <sstream>
 #include <boost/algorithm/string.hpp>
@@ -96,7 +95,6 @@ void PerformanceTestRunner::run(istream& tupleStream) {
     start = clock();
     insert(dict, insertValues);
     cout << " Finished in " << diff(start) << " sec." << endl;
-
     cout << "Memory usage: " << getMemoryUsage() - baseMemory << "." << endl;
 
     cout << "Looking up " << numberOfOperations << " strings by ID." << endl;
@@ -321,8 +319,7 @@ inline vector<string> getValues(vector<uint64_t> randomIDs, unordered_set<string
 
 inline uint64_t getMemoryUsage() {
   //TODO: /proc/*/smaps more precise?
-  pid_t pid = getpid();
-  fstream smaps("/proc/" + to_string(pid) + "/status", ios_base::in);
+  fstream smaps("/proc/self/status", ios_base::in);
   string line;
   uint64_t memory = 0;
   while (getline(smaps, line).good()) {
