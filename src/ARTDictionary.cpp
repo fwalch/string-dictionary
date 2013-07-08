@@ -14,8 +14,11 @@ uint64_t ARTDictionary::insert(string value) {
 }
 
 bool ARTDictionary::bulkInsert(size_t size, string* values) {
-  for (size_t i = 0; i < size; i++) {
-    insert(values[i]);
+  assert(nextId == 0);
+
+  for (; nextId < size; nextId++) {
+    reverseIndex.insert(values[nextId], nextId);
+    index.insert(nextId, values[nextId]);
   }
 
   return true;

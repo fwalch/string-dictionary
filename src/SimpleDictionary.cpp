@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstring>
 #include <functional>
 #include "SimpleDictionary.hpp"
@@ -14,8 +15,9 @@ uint64_t SimpleDictionary::insert(string value) {
   auto reverseIt = reverseIndex.find(value.c_str());
 
   if (reverseIt == reverseIndex.end()) {
-    char* insertValue = new char[value.length() + 1];
-    memcpy(insertValue, value.c_str(), value.length() + 1);
+    size_t len = value.length() + 1;
+    char* insertValue = new char[len];
+    memcpy(insertValue, value.c_str(), len);
     index[nextId] = insertValue;
     reverseIndex[insertValue] = nextId;
     return nextId++;
@@ -25,11 +27,17 @@ uint64_t SimpleDictionary::insert(string value) {
 }
 
 bool SimpleDictionary::bulkInsert(size_t size, string* values) {
-  index.reserve(index.size() + size);
-  reverseIndex.reserve(reverseIndex.size() + size);
+  assert(nextId == 0);
 
-  for (size_t i = 0; i < size; i++) {
-    insert(values[i]);
+  index.reserve(size);
+  reverseIndex.reserve(size);
+
+  for (; nextId < size; nextId++) {
+    size_t len = values[nextId].length() + 1;
+    char* insertValue = new char[len];
+    memcpy(insertValue, values[nextId].c_str(), len);
+    index[nextId] = insertValue;
+    reverseIndex[insertValue] = nextId;
   }
 
   return true;

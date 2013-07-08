@@ -20,8 +20,11 @@ uint64_t BPlusTreeDictionary::insert(string value) {
 }
 
 bool BPlusTreeDictionary::bulkInsert(size_t size, string* values) {
-  for (size_t i = 0; i < size; i++) {
-    insert(values[i]);
+  assert(nextId == 0);
+
+  for (; nextId < size; nextId++) {
+    index[nextId] = values[nextId];
+    reverseIndex[values[nextId]] = nextId;
   }
 
   return true;

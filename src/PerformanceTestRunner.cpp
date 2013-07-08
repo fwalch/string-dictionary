@@ -158,6 +158,8 @@ inline Dictionary* getDictionary(char counter) {
       return new BTreeDictionary();
     case 6:
       return new BPlusTreeDictionary();
+    case 7:
+      return new HATDictionary();
   }
   assert(false);
   return nullptr;

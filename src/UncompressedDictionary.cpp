@@ -1,3 +1,4 @@
+#include <cassert>
 #include "UncompressedDictionary.hpp"
 
 using namespace std;
@@ -15,11 +16,14 @@ uint64_t UncompressedDictionary::insert(string value) {
 }
 
 bool UncompressedDictionary::bulkInsert(size_t size, string* values) {
-  index.reserve(index.size() + size);
-  reverseIndex.reserve(reverseIndex.size() + size);
+  assert(nextId == 0);
 
-  for (size_t i = 0; i < size; i++) {
-    insert(values[i]);
+  index.reserve(size);
+  reverseIndex.reserve(size);
+
+  for (; nextId < size; nextId++) {
+    index[nextId] = values[nextId];
+    reverseIndex[values[nextId]] = nextId;
   }
 
   return true;

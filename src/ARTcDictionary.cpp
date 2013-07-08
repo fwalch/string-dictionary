@@ -61,8 +61,17 @@ uint64_t ARTcDictionary::insert(string value) {
 }
 
 bool ARTcDictionary::bulkInsert(size_t size, string* values) {
-  for (size_t i = 0; i < size; i++) {
-    insert(values[i]);
+  assert(nextId == 0);
+
+  for (; nextId < size; nextId++) {
+    string& value = values[nextId];
+    int len = static_cast<int>(value.size()) + 1;
+    char* leaf = make_leaf(nextId, value.c_str(), static_cast<size_t>(len));
+    assert(art_insert(&reverseIndex, const_cast<char*>(value.c_str()), len, leaf) == NULL);
+
+    char idKey[sizeof(uint64_t)];
+    reinterpret_cast<uint64_t*>(idKey)[0] = __builtin_bswap64(nextId);
+    assert(art_insert(&index, idKey, sizeof(uint64_t), leaf) == NULL);
   }
 
   return true;
