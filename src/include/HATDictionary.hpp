@@ -3,19 +3,19 @@
 
 #include <map>
 #include "Dictionary.hpp"
-#include "hat_set.hpp"
+#include "hat-trie.h"
 
 /**
- * Adaptive Radix Tree dictionary.
+ * HAT trie dictionary.
  */
 class HATDictionary : public Dictionary {
   private:
     std::map<uint64_t, std::string> index;
-    stx::hat_set<std::string> reverseIndex;
+    hattrie_t* reverseIndex;
 
   public:
-    HATDictionary() { }
-    ~HATDictionary() noexcept { }
+    HATDictionary();
+    ~HATDictionary() noexcept;
 
     bool bulkInsert(size_t size, std::string* values);
     uint64_t insert(std::string value);

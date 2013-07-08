@@ -35,6 +35,6 @@ For the helper scripts, the following programs are used: bash, 7z, and wget or c
 
 Contains modified Adaptive Radix Tree source code by [Viktor Leis](http://www-db.in.tum.de/~leis/).
 
-Also uses source code of [`cpp-btree`](https://code.google.com/p/cpp-btree) ([license terms](btree/COPYING)), [`stx-btree`](http://panthema.net/2007/stx-btree/) ([license terms](b+tree/LICENSE_1_0.txt)), [`libart`](https://github.com/armon/libart) ([license terms](libart/LICENSE)), [`HAT`](https://github.com/chris-vaszauskas/hat-trie) ([license terms](hat/LICENSE)), and [Boost](http://www.boost.org) ([license terms](boost/LICENSE_1_0.txt)).
+Also uses source code of [`cpp-btree`](https://code.google.com/p/cpp-btree) ([license terms](btree/COPYING)), [`stx-btree`](http://panthema.net/2007/stx-btree/) ([license terms](b+tree/LICENSE_1_0.txt)), [`libart`](https://github.com/armon/libart) ([license terms](libart/LICENSE)), [`HAT`](https://github.com/dcjones/hat-trie) ([license terms](hat/COPYING)), and [Boost](http://www.boost.org) ([license terms](boost/LICENSE_1_0.txt)).
 
 Includes source code of [`googletest`](https://code.google.com/p/googletest) ([license terms](gtest/COPYING)) and [`googlemock`](https://code.google.com/p/googlemock) ([license terms](gmock/COPYING)) for the unit tests.

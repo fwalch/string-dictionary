@@ -3,25 +3,32 @@
 
 using namespace std;
 
+HATDictionary::HATDictionary() {
+  reverseIndex = hattrie_create();
+}
+
+HATDictionary::~HATDictionary() noexcept {
+  hattrie_free(reverseIndex);
+}
+
 uint64_t HATDictionary::insert(string value) {
-  auto reverseIt = reverseIndex.find(value);
-  if (reverseIt == reverseIndex.end()) {
+  bool inserted = false;
+  uint64_t* idPtr = hattrie_get(reverseIndex, value.c_str(), value.size() + 1, &inserted);
+  if (inserted) {
     // String not in dictionary
-    reverseIndex.insert(value);
+    *idPtr = nextId;
     index.insert(make_pair(nextId, value));
     return nextId++;
   }
 
-  // TODO: we cannot determine the ID because we only have a set
-  return 0;
+  return *idPtr;
 }
 
 bool HATDictionary::bulkInsert(size_t size, string* values) {
   assert(nextId == 0);
 
-  reverseIndex.insert(values, values + size);
-
   for (; nextId < size; nextId++) {
+    hattrie_get(reverseIndex, values[nextId].c_str(), values[nextId].size() + 1, NULL);
     index.insert(make_pair(nextId, values[nextId]));
   }
 
@@ -42,13 +49,11 @@ bool HATDictionary::update(uint64_t& id, std::string value) {
 }
 
 bool HATDictionary::lookup(std::string value, uint64_t& id) {
-  auto reverseIt = reverseIndex.find(value);
-  if (reverseIt == reverseIndex.end()) {
+  uint64_t* idPtr = hattrie_tryget(reverseIndex, value.c_str(), value.size() + 1);
+  if (idPtr == NULL) {
     return false;
   }
-
-  // TODO: we cannot determine the ID because we only have a set
-  id = 0;
+  id = *idPtr;
   return true;
 }
 
