@@ -24,5 +24,4 @@ bool DummyDictionary::lookup(std::string value, uint64_t& id) {
 bool DummyDictionary::lookup(uint64_t id, std::string& value) {
   return true;
 }
-
 #pragma GCC diagnostic pop

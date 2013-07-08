@@ -2,7 +2,7 @@
 #define H_Dictionaries
 
 namespace Dictionaries {
-  static constexpr char Count = 6;
+  static constexpr char Count = 7;
 }
 
 #include "DummyDictionary.hpp"
@@ -10,6 +10,7 @@ namespace Dictionaries {
 #include "SimpleDictionary.hpp"
 #include "HashARTDictionary.hpp"
 #include "ARTDictionary.hpp"
+#include "ARTcDictionary.hpp"
 #include "BTreeDictionary.hpp"
 #include "BPlusTreeDictionary.hpp"
 

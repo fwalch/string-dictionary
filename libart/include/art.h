@@ -2,6 +2,10 @@
 #ifndef ART_H
 #define ART_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define NODE4   1
 #define NODE16  2
 #define NODE48  3
@@ -163,5 +167,9 @@ int art_iter(art_tree *t, art_callback cb, void *data);
  * @return 0 on success, or the return of the callback.
  */
 int art_iter_prefix(art_tree *t, char *prefix, int prefix_len, art_callback cb, void *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

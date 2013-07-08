@@ -40,8 +40,8 @@ OBJ_DIR := obj
 EXE_DIR := bin
 
 CHECKDIR  = mkdir -p $$(dir $$@)
-BUILDOBJ  = $(CXX) -c $(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
-BUILDCOBJ = $(CC) -c $(CFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
+BUILDCXX  = $(CXX) -c $(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
+BUILDCC   = $(CC) -c $(CFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
 BUILDEXE  = $(CXX) $(LDFLAGS) $$^ -o $$@
 
 # Default build type
@@ -61,11 +61,6 @@ set-debug:
 	$(eval BUILD = DBG)
 
 # Generate targets for source trees
-#
-# Will also generate a "compile-%" and
-# a "%" target for compiling and running
-# an executable (e.g. "compile-test"
-# and "test")
 SOURCES = src test
 include targets.mk
 

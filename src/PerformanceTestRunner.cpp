@@ -153,8 +153,10 @@ inline Dictionary* getDictionary(char counter) {
     case 3:
       return new ARTDictionary();
     case 4:
-      return new BTreeDictionary();
+      return new ARTcDictionary();
     case 5:
+      return new BTreeDictionary();
+    case 6:
       return new BPlusTreeDictionary();
   }
   assert(false);

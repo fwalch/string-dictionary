@@ -4,7 +4,7 @@
 
 template<>
 uint8_t* ReverseIndexART<IndexART>::loadKey(uintptr_t tid) {
-  return cast(index.values[tid]);
+  return cast(index.values[tid].second);
 }
 
 template<>
