@@ -1,13 +1,13 @@
+#include <boost/algorithm/string.hpp>
+#include <cstdlib>
+#include <fstream>
+#include <string>
+#include <sys/wait.h>
+#include <unordered_set>
+#include <vector>
 #include "PerformanceTestRunner.hpp"
 #include "TurtleParser.hpp"
 #include "Dictionaries.hpp"
-#include <unordered_set>
-#include <vector>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <boost/algorithm/string.hpp>
-#include <cstdlib>
 
 using namespace std;
 
@@ -38,6 +38,9 @@ inline void update(Dictionary*, vector<uint64_t>, vector<string>);
 inline float diff(clock_t start);
 inline uint64_t getMemoryUsage();
 
+/**
+ * Executes performance tests for dictionary implementations.
+ */
 void PerformanceTestRunner::run(istream& tupleStream) {
   cout << "Reading string values from turtle file into memory." << endl;
   unordered_set<string> uniqueValues = getValues(tupleStream);
@@ -76,89 +79,92 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 
   cout << endl;
 
-  uint64_t baseMemory = getMemoryUsage();
-
   // Load data from into all dictionaries in succession
   for (char counter = 0; hasDictionary(counter); counter++) {
-    Dictionary* dict = getDictionary(counter);
+    // Fork to allow memory measurements
+    int status;
+    if (fork() == 0) {
+      uint64_t baseMemory = getMemoryUsage();
 
-    cout << "# Executing tests with " << dict << "." << endl;
+      Dictionary* dict = getDictionary(counter);
 
-    clock_t start;
+      cout << "# Executing tests with " << dict << "." << endl;
 
-    cout << "Bulk-loading " << numberOfBulkLoadValues << " values." << endl;
-    start = clock();
-    bulkLoad(dict, bulkLoadValues);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      clock_t start;
 
-    cout << "Inserting " << numberOfOperations << " values." << endl;
-    start = clock();
-    insert(dict, insertValues);
-    cout << " Finished in " << diff(start) << " sec." << endl;
-    cout << "Memory usage: " << getMemoryUsage() - baseMemory << "." << endl;
+      cout << "Bulk-loading " << numberOfBulkLoadValues << " values." << endl;
+      start = clock();
+      bulkLoad(dict, bulkLoadValues);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << "Looking up " << numberOfOperations << " strings by ID." << endl;
-    start = clock();
-    lookup(dict, lookupIDs);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Inserting " << numberOfOperations << " values." << endl;
+      start = clock();
+      insert(dict, insertValues);
+      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Memory usage: " << getMemoryUsage() - baseMemory << "." << endl;
 
-    cout << "Looking up " << numberOfOperations << " strings by value." << endl;
-    start = clock();
-    lookup(dict, lookupValues);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Looking up " << numberOfOperations << " strings by ID." << endl;
+      start = clock();
+      lookup(dict, lookupIDs);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << "Executing " << numberOfOperations << " range lookups by ID." << endl;
-    start = clock();
-    rangeLookup(dict, rangeLookupIDs);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Looking up " << numberOfOperations << " strings by value." << endl;
+      start = clock();
+      lookup(dict, lookupValues);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << "Executing " << numberOfOperations << " range lookups by value." << endl;
-    start = clock();
-    rangeLookup(dict, rangeLookupValues);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Executing " << numberOfOperations << " range lookups by ID." << endl;
+      start = clock();
+      rangeLookup(dict, rangeLookupIDs);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << "Looking up " << numberOfOperations << " non-existing strings by ID." << endl;
-    start = clock();
-    lookup(dict, neLookupIDs);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Executing " << numberOfOperations << " range lookups by value." << endl;
+      start = clock();
+      rangeLookup(dict, rangeLookupValues);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << "Looking up " << numberOfOperations << " non-existing strings by value." << endl;
-    start = clock();
-    lookup(dict, neLookupValues);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Looking up " << numberOfOperations << " non-existing strings by ID." << endl;
+      start = clock();
+      lookup(dict, neLookupIDs);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << "Updating " << numberOfOperations << " strings." << endl;
-    start = clock();
-    update(dict, updateIDs, updateValues);
-    cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "Looking up " << numberOfOperations << " non-existing strings by value." << endl;
+      start = clock();
+      lookup(dict, neLookupValues);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    cout << endl;
+      cout << "Updating " << numberOfOperations << " strings." << endl;
+      start = clock();
+      update(dict, updateIDs, updateValues);
+      cout << " Finished in " << diff(start) << " sec." << endl;
 
-    delete dict;
+      cout << endl;
+
+      delete dict;
+
+      exit(0);
+    }
+    else {
+      wait(&status);
+    }
   }
 }
 
 inline bool hasDictionary(char counter) {
-  return counter < Dictionaries::Count;
+  return counter < 5;
 }
 
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
     case 0:
-      return new UncompressedDictionary();
-    case 1:
-      return new SimpleDictionary();
-    case 2:
-      return new HashARTDictionary();
-    case 3:
-      return new ARTDictionary();
-    case 4:
-      return new ARTcDictionary();
-    case 5:
       return new BTreeDictionary();
-    case 6:
+    case 1:
       return new BPlusTreeDictionary();
-    case 7:
+    case 2:
+      return new ARTDictionary();
+    case 3:
+      return new ARTcDictionary();
+    case 4:
       return new HATDictionary();
   }
   assert(false);
