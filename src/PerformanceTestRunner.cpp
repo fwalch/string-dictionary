@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <unistd.h>
 #include <sys/wait.h>
 #include <unordered_set>
 #include <vector>
@@ -329,17 +330,28 @@ inline vector<string> getValues(vector<uint64_t> randomIDs, unordered_set<string
 
 inline uint64_t getMemoryUsage() {
   //TODO: /proc/*/smaps more precise?
-  fstream smaps("/proc/self/status", ios_base::in);
+  FILE* proc = popen(("ps -p"+ to_string(getpid()) +" -orss=").c_str(), "r");
+  assert(proc);
+  char buffer[64];
+  string result = "";
+  while (!feof(proc)) {
+    if (fgets(buffer, 64, proc) != NULL) {
+      result += buffer;
+    }
+  }
+  pclose(proc);
+  return static_cast<uint64_t>(atol(result.c_str()));
+  /*fstream status("/proc/self/status", ios_base::in);
   string line;
   uint64_t memory = 0;
-  while (getline(smaps, line).good()) {
+  while (getline(status, line).good()) {
     if (boost::starts_with(line, "VmRSS")) {
       assert(memory == 0);
       memory = static_cast<uint64_t>(atol(line.c_str() + 6));
     }
   }
-  smaps.close();
-  return memory;
+  status.close();
+  return memory;*/
 }
 
 inline vector<string> getPrefixes(vector<uint64_t> randomIDs, unordered_set<string> values) {
