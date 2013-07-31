@@ -618,13 +618,6 @@ ReverseIndexMART::Node* ReverseIndexMART::createRootNode(size_t size, string* va
   }
 
   uint32_t globalPrefixLength = static_cast<uint32_t>(searchPos);
-  if (globalPrefixLength > 0) {
-    cout << "Global prefix: " << string(&values[start][0], globalPrefixLength) << endl;
-  }
-  else {
-    cout << "No global prefix" << endl;
-  }
-
   Node4* root = new Node4(globalPrefixLength);
   memcpy(root->prefix, &values[start][0], globalPrefixLength);
 
@@ -638,9 +631,7 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, size_t searchP
 
   do {
     const char searchChar = values[start][searchPos];
-    cout << "Searching for " << searchChar << " at " << searchPos << " (" << start << "-" << size << ")" << endl;
     end = start+findBlock(searchChar, searchPos, size-start, &values[start]);
-    cout << "Found " << end-start+1 << " strings of " << size << endl;
 
     keyBytePos = searchPos++;
 
@@ -659,15 +650,6 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, size_t searchP
 
     if (start != end) {
       // Create inner node for common prefix of this chunk of strings
-      cout << ":: Prefix node" << endl;
-      cout << "Key from parent: " << keyByte << endl;
-      if (prefixLength > 0) {
-        cout << "Prefix: " << prefixLength << "-" << string(prefix, prefixLength) << endl;
-      }
-      else {
-        cout << "No prefix" << endl;
-      }
-
       Node4* newNode = new Node4(prefixLength);
       memcpy(newNode->prefix, prefix, prefixLength);
 
@@ -685,7 +667,6 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, size_t searchP
     }
     else {
       // Only one string left; create suffix node and leaf
-      cout << ":: Suffix node + Leaf" << endl;
       Node* newNode = makeLeaf(nextId++);
 
       if (prefixLength > 0) {
@@ -695,20 +676,6 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, size_t searchP
         char keyToChild = values[start][keyBytePos+prefixLength];
         insertNode4(intermediate, nodeRef, static_cast<uint8_t>(keyToChild), newNode);
         newNode = intermediate;
-
-        cout << "Intermediate node" << endl;
-        cout << "Key from parent: " << keyByte << endl;
-        if (prefixLength > 1) {
-          cout << "Prefix: " << prefixLength-1 << "-" << string(prefix, prefixLength-1) << endl;
-        }
-        else {
-          cout << "No prefix" << endl;
-        }
-        cout << "Key to leaf: " << keyToChild << endl;
-      }
-      else {
-        cout << "Direct to leaf" << endl;
-        cout << "Key to leaf: " << keyByte << endl;
       }
 
       switch (node->type) {
