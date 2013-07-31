@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <cstdlib>
 #include <fstream>
@@ -12,7 +13,7 @@
 
 using namespace std;
 
-#define BULK_LOAD_RATIO 0.8
+#define BULK_LOAD_RATIO 1.0
 
 inline bool hasDictionary(char counter);
 inline Dictionary* getDictionary(char counter);
@@ -152,21 +153,23 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 }
 
 inline bool hasDictionary(char counter) {
-  return counter < 5;
+  return counter < 3;
 }
 
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
+//    case 0:
+//      return new BTreeDictionary();
+//    case 1:
+//      return new BPlusTreeDictionary();
     case 0:
-      return new BTreeDictionary();
-    case 1:
-      return new BPlusTreeDictionary();
-    case 2:
       return new ARTDictionary();
-    case 3:
-      return new ARTcDictionary();
-    case 4:
-      return new HATDictionary();
+//    case 3:
+//      return new ARTcDictionary();
+//    case 4:
+//      return new HATDictionary();
+    case 1:
+      return new MARTDictionary();
   }
   assert(false);
   return nullptr;
@@ -304,6 +307,8 @@ inline void splitForBulkLoad(vector<uint64_t> insertIDs, unordered_set<string> v
       bulkLoadValues.push_back(valueVector[i]);
     }
   }
+
+  sort(bulkLoadValues.begin(), bulkLoadValues.end());
 }
 
 inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, unordered_set<string> values) {

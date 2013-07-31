@@ -7,6 +7,7 @@
 #include "HATDictionary.hpp"
 #include "HashARTDictionary.hpp"
 #include "ARTDictionary.hpp"
+#include "MARTDictionary.hpp"
 #include "ARTcDictionary.hpp"
 #include "BTreeDictionary.hpp"
 #include "BPlusTreeDictionary.hpp"

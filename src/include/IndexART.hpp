@@ -21,6 +21,7 @@ class IndexART : public AdaptiveRadixTree {
     bool lookup(uint64_t key, std::string& value);
 
   friend class ReverseIndexART<IndexART>;
+  friend class ReverseIndexMART;
 };
 
 #endif
