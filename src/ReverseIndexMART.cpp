@@ -9,7 +9,6 @@
 #include <algorithm>   // std::random_shuffle
 #include <cassert>
 #include <cstring>
-#include <iostream>
 
 /**
  * @file
@@ -593,7 +592,6 @@ inline size_t findBlock(const char searchChar, size_t prefixPos, size_t size, st
       start = middle+1;
     }
     else {
-      assert(values[middle][prefixPos] > searchChar);
       end = middle;
     }
   }
@@ -643,21 +641,21 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, size_t searchP
     }
 
     uint32_t prefixLength = static_cast<uint32_t>(searchPos-keyBytePos)-1;
-    const char* prefix = prefixLength > 0
-      ? values[start].substr(keyBytePos+1, prefixLength).c_str()
-      : nullptr;
+    string prefix = prefixLength > 0
+      ? values[start].substr(keyBytePos+1, prefixLength)
+      : "";
     uint8_t keyByte = static_cast<uint8_t>(values[start][keyBytePos]);
 
     if (start != end) {
       // Create inner node for common prefix of this chunk of strings
       Node4* newNode = new Node4(prefixLength);
-      memcpy(newNode->prefix, prefix, prefixLength);
+      memcpy(newNode->prefix, prefix.c_str(), prefixLength);
 
       switch (node->type) {
-        case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,keyByte,newNode); break;
-        case NodeType16: insertNode16(static_cast<Node16*>(node),nodeRef,keyByte,newNode); break;
-        case NodeType48: insertNode48(static_cast<Node48*>(node),nodeRef,keyByte,newNode); break;
-        case NodeType256: insertNode256(static_cast<Node256*>(node),keyByte,newNode); break;
+        case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,keyByte,newNode); node=*nodeRef; break;
+        case NodeType16: insertNode16(static_cast<Node16*>(node),nodeRef,keyByte,newNode); node=*nodeRef; break;
+        case NodeType48: insertNode48(static_cast<Node48*>(node),nodeRef,keyByte,newNode); node=*nodeRef; break;
+        case NodeType256: insertNode256(static_cast<Node256*>(node),keyByte,newNode); node=*nodeRef; break;
       }
 
       bulkInsertRec(end-start+1, &values[start], keyBytePos+1, newNode, reinterpret_cast<Node**>(&newNode));
@@ -672,17 +670,17 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, size_t searchP
       if (prefixLength > 0) {
         // Create suffix node
         Node4* intermediate = new Node4(prefixLength-1);
-        memcpy(intermediate->prefix, prefix, prefixLength-1);
+        memcpy(intermediate->prefix, prefix.c_str(), prefixLength-1);
         char keyToChild = values[start][keyBytePos+prefixLength];
         insertNode4(intermediate, nodeRef, static_cast<uint8_t>(keyToChild), newNode);
         newNode = intermediate;
       }
 
       switch (node->type) {
-        case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,keyByte,newNode); break;
-        case NodeType16: insertNode16(static_cast<Node16*>(node),nodeRef,keyByte,newNode); break;
-        case NodeType48: insertNode48(static_cast<Node48*>(node),nodeRef,keyByte,newNode); break;
-        case NodeType256: insertNode256(static_cast<Node256*>(node),keyByte,newNode); break;
+        case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,keyByte,newNode); node=*nodeRef; break;
+        case NodeType16: insertNode16(static_cast<Node16*>(node),nodeRef,keyByte,newNode); node=*nodeRef; break;
+        case NodeType48: insertNode48(static_cast<Node48*>(node),nodeRef,keyByte,newNode); node=*nodeRef; break;
+        case NodeType256: insertNode256(static_cast<Node256*>(node),keyByte,newNode); node=*nodeRef; break;
       }
 
       // Go to next string in prefix (parent) chunk or to new chunk
