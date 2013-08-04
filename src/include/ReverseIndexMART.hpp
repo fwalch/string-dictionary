@@ -15,18 +15,23 @@ class ReverseIndexMART {
 
     unsigned nextId;
 
-    void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child);
-    void insertNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child);
-    void insertNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child);
+    void insertNode4(Node4* node, uint8_t keyByte,Node* child);
+    void insertNode16(Node16* node, uint8_t keyByte,Node* child);
+    void insertNode48(Node48* node, uint8_t keyByte,Node* child);
     void insertNode256(Node256* node,uint8_t keyByte,Node* child);
+    void insertNode(Node* parent,uint8_t keyByte,Node* child);
+    void insertOrGrowNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child);
+    void insertOrGrowNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child);
+    void insertOrGrowNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child);
     void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace);
     void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace);
     void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte);
     void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 
     void copyPrefix(Node* src,Node* dst);
-    void bulkInsertRec(size_t size, std::string* values, size_t prefixPos, Node* node, Node** nodeRef);
-    Node* createRootNode(size_t size, std::string* values, size_t& prefixPos);
+    void bulkInsertRec(size_t size, std::string* values, uint32_t prefixPos, Node* node);
+    Node* createRootNode(size_t size, std::string* values, uint32_t& prefixPos);
+    Node* createNode(const char* prefix, uint32_t prefixLength, uint8_t numberOfChildren);
 
     Node* tree;
     static Node* nullNode;
