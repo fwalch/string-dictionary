@@ -9,6 +9,7 @@
 #include <algorithm>   // std::random_shuffle
 #include <cassert>
 #include <cstring>
+#include <new>
 
 /**
  * @file
@@ -38,6 +39,22 @@ static const int8_t NodeType16=1;
 static const int8_t NodeType48=2;
 static const int8_t NodeType256=3;
 
+inline uint8_t flipSign(uint8_t keyByte);
+static inline unsigned ctz(uint16_t x) {
+  // Count trailing zeros, only defined for x>0
+#ifdef __GNUC__
+  return static_cast<unsigned>(__builtin_ctz(x));
+#else
+  // Adapted from Hacker's Delight
+  unsigned n=1;
+  if ((x&0xFF)==0) {n+=8; x=x>>8;}
+  if ((x&0x0F)==0) {n+=4; x=x>>4;}
+  if ((x&0x03)==0) {n+=2; x=x>>2;}
+  return n-(x&1);
+#endif
+}
+
+
 // Shared header of all inner nodes
 //TODO: prefix at end, create varlength node with one alloc
 struct ReverseIndexMART::Node {
@@ -47,18 +64,18 @@ struct ReverseIndexMART::Node {
   uint16_t count;
   // node type
   int8_t type;
-  // compressed path (prefix)
-  uint8_t* prefix;
 
-  Node(int8_t nodeType, uint32_t prefLen) : prefixLength(prefLen),count(0),type(nodeType) {
-    prefix = new uint8_t[prefixLength];
-    memset(prefix,0,prefixLength);
+  Node(int8_t nodeType, uint32_t prefLen)
+    : prefixLength(prefLen),count(0),type(nodeType) {
   }
 
-  ~Node() {
-    delete[] prefix;
-  }
+  virtual ~Node();
+
+  virtual uint8_t* prefix() = 0;
+  virtual void insert(uint8_t keyByte, Node* child) = 0;
 };
+
+ReverseIndexMART::Node::~Node() { }
 
 // Node with up to 4 children
 struct ReverseIndexMART::Node4 : Node {
@@ -69,7 +86,24 @@ struct ReverseIndexMART::Node4 : Node {
     memset(key,0,sizeof(key));
     memset(child,0,sizeof(child));
   }
+
+  uint8_t* prefix();
+  void insert(uint8_t keyByte, Node* child);
 };
+
+uint8_t* ReverseIndexMART::Node4::prefix() {
+  return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node4)]);
+}
+
+void ReverseIndexMART::Node4::insert(uint8_t keyByte, Node* child) {
+  unsigned pos;
+  for (pos=0;(pos<this->count)&&(this->key[pos]<keyByte);pos++);
+  memmove(this->key+pos+1,this->key+pos,this->count-pos);
+  memmove(this->child+pos+1,this->child+pos,(this->count-pos)*sizeof(uintptr_t));
+  this->key[pos]=keyByte;
+  this->child[pos]=child;
+  this->count++;
+}
 
 // Node with up to 16 children
 struct ReverseIndexMART::Node16 : Node {
@@ -80,7 +114,26 @@ struct ReverseIndexMART::Node16 : Node {
     memset(key,0,sizeof(key));
     memset(child,0,sizeof(child));
   }
+
+  uint8_t* prefix();
+  void insert(uint8_t keyByte, Node* child);
 };
+
+uint8_t* ReverseIndexMART::Node16::prefix() {
+  return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node16)]);
+}
+
+void ReverseIndexMART::Node16::insert(uint8_t keyByte, Node* child) {
+  uint8_t keyByteFlipped=flipSign(keyByte);
+  __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(static_cast<char>(keyByteFlipped)),_mm_loadu_si128(reinterpret_cast<__m128i*>(this->key)));
+  uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-this->count));
+  unsigned pos=bitfield?ctz(bitfield):this->count;
+  memmove(this->key+pos+1,this->key+pos,this->count-pos);
+  memmove(this->child+pos+1,this->child+pos,(this->count-pos)*sizeof(uintptr_t));
+  this->key[pos]=keyByteFlipped;
+  this->child[pos]=child;
+  this->count++;
+}
 
 static const uint8_t emptyMarker=48;
 
@@ -93,7 +146,23 @@ struct ReverseIndexMART::Node48 : Node {
     memset(childIndex,emptyMarker,sizeof(childIndex));
     memset(child,0,sizeof(child));
   }
+
+  uint8_t* prefix();
+  void insert(uint8_t keyByte, Node* child);
 };
+
+uint8_t* ReverseIndexMART::Node48::prefix() {
+  return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node48)]);
+}
+
+void ReverseIndexMART::Node48::insert(uint8_t keyByte, Node* child) {
+  unsigned pos=this->count;
+  if (this->child[pos])
+    for (pos=0;this->child[pos]!=NULL;pos++);
+  this->child[pos]=child;
+  this->childIndex[keyByte]=static_cast<uint8_t>(pos);
+  this->count++;
+}
 
 // Node with up to 256 children
 struct ReverseIndexMART::Node256 : Node {
@@ -102,7 +171,40 @@ struct ReverseIndexMART::Node256 : Node {
   Node256(uint32_t len) : Node(NodeType256, len) {
     memset(child,0,sizeof(child));
   }
+
+  uint8_t* prefix();
+  void insert(uint8_t keyByte, Node* child);
 };
+
+uint8_t* ReverseIndexMART::Node256::prefix() {
+  return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node256)]);
+}
+
+void ReverseIndexMART::Node256::insert(uint8_t keyByte, Node* child) {
+  // Insert leaf into inner node
+  this->count++;
+  this->child[keyByte]=child;
+}
+
+ReverseIndexMART::Node4* ReverseIndexMART::createNode4(uint32_t prefixLength) {
+  void* memory = malloc(sizeof(Node4)+prefixLength);
+  return new (memory) Node4(prefixLength);
+}
+
+ReverseIndexMART::Node16* ReverseIndexMART::createNode16(uint32_t prefixLength) {
+  void* memory = malloc(sizeof(Node16)+prefixLength);
+  return new (memory) Node16(prefixLength);
+}
+
+ReverseIndexMART::Node48* ReverseIndexMART::createNode48(uint32_t prefixLength) {
+  void* memory = malloc(sizeof(Node48)+prefixLength);
+  return new (memory) Node48(prefixLength);
+}
+
+ReverseIndexMART::Node256* ReverseIndexMART::createNode256(uint32_t prefixLength) {
+  void* memory = malloc(sizeof(Node256)+prefixLength);
+  return new (memory) Node256(prefixLength);
+}
 
 inline ReverseIndexMART::Node* ReverseIndexMART::makeLeaf(uintptr_t tid) {
   // Create a pseudo-leaf
@@ -119,7 +221,6 @@ bool ReverseIndexMART::isLeaf(Node* node) {
   return reinterpret_cast<uintptr_t>(node)&1;
 }
 
-inline uint8_t flipSign(uint8_t keyByte);
 uint8_t flipSign(uint8_t keyByte) {
   // Flip the sign bit, enables signed SSE comparison of unsigned values, used by Node16
   return keyByte^128;
@@ -127,20 +228,6 @@ uint8_t flipSign(uint8_t keyByte) {
 
 // This address is used to communicate that search failed
 ReverseIndexMART::Node* ReverseIndexMART::nullNode=NULL;
-
-static inline unsigned ctz(uint16_t x) {
-  // Count trailing zeros, only defined for x>0
-#ifdef __GNUC__
-  return static_cast<unsigned>(__builtin_ctz(x));
-#else
-  // Adapted from Hacker's Delight
-  unsigned n=1;
-  if ((x&0xFF)==0) {n+=8; x=x>>8;}
-  if ((x&0x0F)==0) {n+=4; x=x>>4;}
-  if ((x&0x03)==0) {n+=2; x=x>>2;}
-  return n-(x&1);
-#endif
-}
 
 ReverseIndexMART::Node** ReverseIndexMART::findChild(Node* n,uint8_t keyByte) {
   // Find the next child for the keyByte
@@ -259,7 +346,7 @@ unsigned ReverseIndexMART::prefixMismatch(Node* node,uint8_t key[],unsigned dept
   // Compare the key with the prefix of the node, return the number matching bytes
   unsigned pos;
     for (pos=0;pos<node->prefixLength;pos++)
-      if (key[depth+pos]!=node->prefix[pos])
+      if (key[depth+pos]!=node->prefix()[pos])
         return pos;
   return pos;
 }
@@ -297,7 +384,7 @@ unsigned min(unsigned a,unsigned b) {
 void ReverseIndexMART::copyPrefix(ReverseIndexMART::Node* src,ReverseIndexMART::Node* dst) {
   // Helper function that copies the prefix from the source to the destination node
   dst->prefixLength=src->prefixLength;
-  memcpy(dst->prefix,src->prefix,src->prefixLength);
+  memcpy(dst->prefix(),src->prefix(),src->prefixLength);
 }
 
 void ReverseIndexMART::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value) {
@@ -315,8 +402,8 @@ void ReverseIndexMART::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsig
     while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
       newPrefixLength++;
 
-    Node4* newNode=new Node4(newPrefixLength);
-    memcpy(newNode->prefix,key+depth,newPrefixLength);
+    Node4* newNode=createNode4(newPrefixLength);
+    memcpy(newNode->prefix(),key+depth,newPrefixLength);
     *nodeRef=newNode;
 
     insertOrGrowNode4(newNode,nodeRef,existingKey[depth+newPrefixLength],node);
@@ -329,13 +416,13 @@ void ReverseIndexMART::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsig
     unsigned mismatchPos=prefixMismatch(node,key,depth);
     if (mismatchPos!=node->prefixLength) {
       // Prefix differs, create new node
-      Node4* newNode=new Node4(mismatchPos);
+      Node4* newNode=createNode4(mismatchPos);
       *nodeRef=newNode;
-      memcpy(newNode->prefix,node->prefix,mismatchPos);
+      memcpy(newNode->prefix(),node->prefix(),mismatchPos);
       // Break up prefix
-      insertOrGrowNode4(newNode,nodeRef,node->prefix[mismatchPos],node);
+      insertOrGrowNode4(newNode,nodeRef,node->prefix()[mismatchPos],node);
       node->prefixLength-=(mismatchPos+1);
-      memmove(node->prefix,node->prefix+mismatchPos+1,node->prefixLength);
+      memmove(node->prefix(),node->prefix()+mismatchPos+1,node->prefixLength);
       insertOrGrowNode4(newNode,nodeRef,key[depth+mismatchPos],makeLeaf(value));
       return;
     }
@@ -355,28 +442,18 @@ void ReverseIndexMART::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsig
     case NodeType4: insertOrGrowNode4(static_cast<Node4*>(node),nodeRef,key[depth],newNode); break;
     case NodeType16: insertOrGrowNode16(static_cast<Node16*>(node),nodeRef,key[depth],newNode); break;
     case NodeType48: insertOrGrowNode48(static_cast<Node48*>(node),nodeRef,key[depth],newNode); break;
-    case NodeType256: insertNode256(static_cast<Node256*>(node),key[depth],newNode); break;
+    case NodeType256: node->insert(key[depth], newNode); break;
   }
-}
-
-void ReverseIndexMART::insertNode4(Node4* node, uint8_t keyByte, Node* child) {
-  unsigned pos;
-  for (pos=0;(pos<node->count)&&(node->key[pos]<keyByte);pos++);
-  memmove(node->key+pos+1,node->key+pos,node->count-pos);
-  memmove(node->child+pos+1,node->child+pos,(node->count-pos)*sizeof(uintptr_t));
-  node->key[pos]=keyByte;
-  node->child[pos]=child;
-  node->count++;
 }
 
 void ReverseIndexMART::insertOrGrowNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
   // Insert leaf into inner node
   if (node->count<4) {
     // Insert element
-    insertNode4(node, keyByte, child);
+    node->insert(keyByte, child);
   } else {
     // Grow to Node16
-    Node16* newNode=new Node16(node->prefixLength);
+    Node16* newNode=createNode16(node->prefixLength);
     *nodeRef=newNode;
     newNode->count=4;
     copyPrefix(node,newNode);
@@ -388,26 +465,14 @@ void ReverseIndexMART::insertOrGrowNode4(Node4* node,Node** nodeRef,uint8_t keyB
   }
 }
 
-void ReverseIndexMART::insertNode16(Node16* node,uint8_t keyByte,Node* child) {
-  uint8_t keyByteFlipped=flipSign(keyByte);
-  __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(static_cast<char>(keyByteFlipped)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
-  uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
-  unsigned pos=bitfield?ctz(bitfield):node->count;
-  memmove(node->key+pos+1,node->key+pos,node->count-pos);
-  memmove(node->child+pos+1,node->child+pos,(node->count-pos)*sizeof(uintptr_t));
-  node->key[pos]=keyByteFlipped;
-  node->child[pos]=child;
-  node->count++;
-}
-
 void ReverseIndexMART::insertOrGrowNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child) {
   // Insert leaf into inner node
   if (node->count<16) {
     // Insert element
-    insertNode16(node, keyByte, child);
+    node->insert(keyByte, child);
   } else {
     // Grow to Node48
-    Node48* newNode=new Node48(node->prefixLength);
+    Node48* newNode=createNode48(node->prefixLength);
     *nodeRef=newNode;
     memcpy(newNode->child,node->child,node->count*sizeof(uintptr_t));
     for (uint8_t i=0;i<node->count;i++)
@@ -419,23 +484,14 @@ void ReverseIndexMART::insertOrGrowNode16(Node16* node,Node** nodeRef,uint8_t ke
   }
 }
 
-void ReverseIndexMART::insertNode48(Node48* node,uint8_t keyByte,Node* child) {
-  unsigned pos=node->count;
-  if (node->child[pos])
-    for (pos=0;node->child[pos]!=NULL;pos++);
-  node->child[pos]=child;
-  node->childIndex[keyByte]=static_cast<uint8_t>(pos);
-  node->count++;
-}
-
 void ReverseIndexMART::insertOrGrowNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child) {
   // Insert leaf into inner node
   if (node->count<48) {
     // Insert element
-    insertNode48(node, keyByte, child);
+    node->insert(keyByte, child);
   } else {
     // Grow to Node256
-    Node256* newNode=new Node256(node->prefixLength);
+    Node256* newNode=createNode256(node->prefixLength);
     for (unsigned i=0;i<256;i++)
       if (node->childIndex[i]!=48)
         newNode->child[i]=node->child[node->childIndex[i]];
@@ -443,17 +499,9 @@ void ReverseIndexMART::insertOrGrowNode48(Node48* node,Node** nodeRef,uint8_t ke
     copyPrefix(node,newNode);
     *nodeRef=newNode;
     delete node;
-    return insertNode256(newNode,keyByte,child);
+    newNode->insert(keyByte, child);
   }
 }
-
-void ReverseIndexMART::insertNode256(Node256* node,uint8_t keyByte,Node* child) {
-  // Insert leaf into inner node
-  node->count++;
-  node->child[keyByte]=child;
-}
-
-// Forward references
 
 void ReverseIndexMART::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth) {
   // Delete a leaf from a tree
@@ -503,14 +551,14 @@ void ReverseIndexMART::eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
     if (!isLeaf(child)) {
       // Concantenate prefixes
       unsigned l1=node->prefixLength;
-      node->prefix[l1]=node->key[0];
+      node->prefix()[l1]=node->key[0];
       l1++;
 
       unsigned l2=child->prefixLength;
-      memcpy(node->prefix+l1,child->prefix,l2);
+      memcpy(node->prefix()+l1,child->prefix(),l2);
       l1+=l2;
       // Store concantenated prefix
-      memcpy(child->prefix,node->prefix,l1);
+      memcpy(child->prefix(),node->prefix(),l1);
       child->prefixLength+=node->prefixLength+1;
     }
     *nodeRef=child;
@@ -527,7 +575,7 @@ void ReverseIndexMART::eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace)
 
   if (node->count==3) {
     // Shrink to Node4
-    Node4* newNode=new Node4(node->prefixLength);
+    Node4* newNode=createNode4(node->prefixLength);
     newNode->count=4;
     copyPrefix(node,newNode);
     for (unsigned i=0;i<4;i++)
@@ -546,7 +594,7 @@ void ReverseIndexMART::eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte) 
 
   if (node->count==12) {
     // Shrink to Node16
-    Node16 *newNode=new Node16(node->prefixLength);
+    Node16 *newNode=createNode16(node->prefixLength);
     *nodeRef=newNode;
     copyPrefix(node,newNode);
     for (uint8_t b=0;b<=255;b++) {
@@ -567,7 +615,7 @@ void ReverseIndexMART::eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte
 
   if (node->count==37) {
     // Shrink to Node48
-    Node48 *newNode=new Node48(node->prefixLength);
+    Node48 *newNode=createNode48(node->prefixLength);
     *nodeRef=newNode;
     copyPrefix(node,newNode);
     for (uint8_t b=0;b<=255;b++) {
@@ -649,39 +697,24 @@ ReverseIndexMART::Node* ReverseIndexMART::createRootNode(size_t size, string* va
 }
 
 ReverseIndexMART::Node* ReverseIndexMART::createNode(const char* prefix, uint32_t prefixLength, uint8_t numberOfChildren) {
-  Node* node;
   if (numberOfChildren <= 4) {
-    node = new Node4(prefixLength);
+    Node4* node = createNode4(prefixLength);
+    memcpy(node->prefix(), prefix, prefixLength);
+    return node;
   }
   if (numberOfChildren <= 16) {
-    node = new Node16(prefixLength);
+    Node16* node = createNode16(prefixLength);
+    memcpy(node->prefix(), prefix, prefixLength);
+    return node;
   }
   if (numberOfChildren <= 48) {
-    node = new Node48(prefixLength);
+    Node48* node = createNode48(prefixLength);
+    memcpy(node->prefix(), prefix, prefixLength);
+    return node;
   }
-  else {
-    node = new Node256(prefixLength);
-  }
-  memcpy(node->prefix, prefix, prefixLength);
-
+  Node256* node = createNode256(prefixLength);
+  memcpy(node->prefix(), prefix, prefixLength);
   return node;
-}
-
-inline void ReverseIndexMART::insertNode(Node* parent, uint8_t keyByte, Node* child) {
-  switch (parent->type) {
-    case NodeType4:
-      insertNode4(static_cast<Node4*>(parent), keyByte, child);
-      break;
-    case NodeType16:
-      insertNode16(static_cast<Node16*>(parent), keyByte, child);
-      break;
-    case NodeType48:
-      insertNode48(static_cast<Node48*>(parent), keyByte, child);
-      break;
-    case NodeType256:
-      insertNode256(static_cast<Node256*>(parent), keyByte, child);
-      break;
-  }
 }
 
 void ReverseIndexMART::bulkInsertRec(size_t size, string* values, uint32_t searchPos, Node* node) {
@@ -712,7 +745,7 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, uint32_t searc
       // Create inner node for common prefix of this chunk of strings
       uint8_t numberOfChildren = countCharacters(end-start+1, &values[start], keyBytePos+1);
       Node* newNode = createNode(prefix.c_str(), prefixLength, numberOfChildren);
-      insertNode(node, keyByte, newNode);
+      node->insert(keyByte, newNode);
 
       // Recurse on next prefix position
       bulkInsertRec(end-start+1, &values[start], keyBytePos+1, newNode);
@@ -726,15 +759,15 @@ void ReverseIndexMART::bulkInsertRec(size_t size, string* values, uint32_t searc
 
       if (prefixLength > 0) {
         // Create suffix node
-        Node4* intermediate = new Node4(prefixLength-1);
-        memcpy(intermediate->prefix, prefix.c_str(), prefixLength-1);
+        Node4* intermediate = createNode4(prefixLength-1);
+        memcpy(intermediate->prefix(), prefix.c_str(), prefixLength-1);
         uint8_t keyToChild = static_cast<uint8_t>(values[start][keyBytePos+prefixLength]);
-        insertNode4(intermediate, keyToChild, newNode);
+        intermediate->insert(keyToChild, newNode);
 
         newNode = intermediate;
       }
 
-      insertNode(node, keyByte, newNode);
+      node->insert(keyByte, newNode);
 
       // Go to next string in prefix (parent) chunk or to new chunk
       start++;

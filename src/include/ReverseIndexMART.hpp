@@ -15,11 +15,10 @@ class ReverseIndexMART {
 
     unsigned nextId;
 
-    void insertNode4(Node4* node, uint8_t keyByte,Node* child);
-    void insertNode16(Node16* node, uint8_t keyByte,Node* child);
-    void insertNode48(Node48* node, uint8_t keyByte,Node* child);
-    void insertNode256(Node256* node,uint8_t keyByte,Node* child);
-    void insertNode(Node* parent,uint8_t keyByte,Node* child);
+    Node4* createNode4(uint32_t prefixLength);
+    Node16* createNode16(uint32_t prefixLength);
+    Node48* createNode48(uint32_t prefixLength);
+    Node256* createNode256(uint32_t prefixLength);
     void insertOrGrowNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child);
     void insertOrGrowNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child);
     void insertOrGrowNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child);
