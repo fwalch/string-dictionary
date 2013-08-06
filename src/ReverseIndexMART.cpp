@@ -56,7 +56,6 @@ static inline unsigned ctz(uint16_t x) {
 
 
 // Shared header of all inner nodes
-//TODO: prefix at end, create varlength node with one alloc
 struct ReverseIndexMART::Node {
   // length of the compressed path (prefix)
   uint32_t prefixLength;
@@ -653,7 +652,7 @@ inline size_t findBlock(const uint8_t searchChar, size_t prefixPos, size_t size,
       start = middle+1;
     }
     else {
-      assert(static_cast<uint8_t>(values[middle][prefixPos]) > searchChar);
+      //assert(static_cast<uint8_t>(values[middle][prefixPos]) > searchChar);
       end = middle;
     }
   }
