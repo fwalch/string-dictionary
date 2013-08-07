@@ -3,7 +3,8 @@ test_sources = UncompressedDictionaryTests.cpp SimpleDictionaryTests.cpp \
 							 AdaptiveRadixTreeTests.cpp ARTDictionaryTests.cpp \
 							 HashARTDictionaryTests.cpp BTreeDictionaryTests.cpp \
 							 BPlusTreeDictionaryTests.cpp ARTcDictionaryTests.cpp \
-							 HATDictionaryTests.cpp MARTDictionaryTests.cpp PageTests.cpp
+							 HATDictionaryTests.cpp MARTDictionaryTests.cpp PageTests.cpp \
+							 FixedSizePageTests.cpp
 test_executables = test
 test_dependencies = src
 test_libraries = gmock gtest
