@@ -35,8 +35,6 @@ class ReverseIndexMART {
     Node* tree;
     static Node* nullNode;
 
-    uintptr_t getLeafValue(Node* node);
-    bool isLeaf(Node* node);
     Node* minimum(Node* node);
     Node* maximum(Node* node);
     bool leafMatches(Node* leaf, uint8_t key[], unsigned keyLength, unsigned depth);

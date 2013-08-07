@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cstring>
 #include <new>
+#include <iostream>
 
 /**
  * @file
@@ -31,6 +32,16 @@ ReverseIndexMART::~ReverseIndexMART() {
 
 inline uint8_t* cast(string& str) {
   return reinterpret_cast<uint8_t*>(const_cast<char*>(str.c_str()));
+}
+
+inline bool isLeaf(ReverseIndexMART::Node* node) {
+  // Is the node a leaf?
+  return reinterpret_cast<uintptr_t>(node)&1;
+}
+
+inline uintptr_t getLeafValue(ReverseIndexMART::Node* node) {
+  // The the value stored in the pseudo-leaf
+  return reinterpret_cast<uintptr_t>(node)>>1;
 }
 
 // Constants for the node types
@@ -72,6 +83,14 @@ struct ReverseIndexMART::Node {
 
   virtual uint8_t* prefix() = 0;
   virtual void insert(uint8_t keyByte, Node* child) = 0;
+  virtual void print(uint32_t indent) {
+    cout << ind(indent) << "Children: " << count << endl;
+    cout << ind(indent) << "Prefix: " << string(reinterpret_cast<char*>(prefix()), prefixLength) << endl;
+  }
+
+  string ind(uint32_t indent) {
+    return string(2*indent, ' ');
+  }
 };
 
 ReverseIndexMART::Node::~Node() { }
@@ -88,6 +107,20 @@ struct ReverseIndexMART::Node4 : Node {
 
   uint8_t* prefix();
   void insert(uint8_t keyByte, Node* child);
+  void print(uint32_t indent) {
+    Node::print(indent);
+
+    for (size_t i = 0; i < count; i++) {
+      assert(child[i] != NULL);
+      cout << ind(indent) << "Key byte: " << key[i] << endl;
+      if (isLeaf(child[i])) {
+        cout << ind(indent+1) << "Leaf: " << getLeafValue(child[i]) << endl;
+      }
+      else {
+        child[i]->print(indent+1);
+      }
+    }
+  }
 };
 
 uint8_t* ReverseIndexMART::Node4::prefix() {
@@ -116,6 +149,19 @@ struct ReverseIndexMART::Node16 : Node {
 
   uint8_t* prefix();
   void insert(uint8_t keyByte, Node* child);
+  void print(uint32_t indent) {
+    Node::print(indent);
+
+    for (size_t i = 0; i < count; i++) {
+      cout << ind(indent) << "Key byte: " << key[i] << endl;
+      if (isLeaf(child[i])) {
+        cout << ind(indent+1) << "Leaf: " << getLeafValue(child[i]) << endl;
+      }
+      else {
+        child[i]->print(indent+1);
+      }
+    }
+  }
 };
 
 uint8_t* ReverseIndexMART::Node16::prefix() {
@@ -148,6 +194,22 @@ struct ReverseIndexMART::Node48 : Node {
 
   uint8_t* prefix();
   void insert(uint8_t keyByte, Node* child);
+
+  void print(uint32_t indent) {
+    Node::print(indent);
+
+    for (uint16_t i = 0; i < 256; i++) {
+      if (childIndex[i] == emptyMarker) continue;
+
+      cout << ind(indent) << "Key byte: " << (char)i << endl;
+      if (isLeaf(child[childIndex[i]])) {
+        cout << ind(indent+1) << "Leaf: " << getLeafValue(child[childIndex[i]]) << endl;
+      }
+      else {
+        child[childIndex[i]]->print(indent+1);
+      }
+    }
+  }
 };
 
 uint8_t* ReverseIndexMART::Node48::prefix() {
@@ -173,6 +235,20 @@ struct ReverseIndexMART::Node256 : Node {
 
   uint8_t* prefix();
   void insert(uint8_t keyByte, Node* child);
+
+  void print(uint32_t indent) {
+    Node::print(indent);
+
+    for (uint16_t i = 0; i < 256; i++) {
+      cout << ind(indent) << "Key byte: " << (char)i << endl;
+      if (isLeaf(child[i])) {
+        cout << ind(indent+1) << "Leaf: " << getLeafValue(child[i]) << endl;
+      }
+      else {
+        child[i]->print(indent+1);
+      }
+    }
+  }
 };
 
 uint8_t* ReverseIndexMART::Node256::prefix() {
@@ -208,16 +284,6 @@ ReverseIndexMART::Node256* ReverseIndexMART::createNode256(uint32_t prefixLength
 inline ReverseIndexMART::Node* ReverseIndexMART::makeLeaf(uintptr_t tid) {
   // Create a pseudo-leaf
   return reinterpret_cast<Node*>((tid<<1)|1);
-}
-
-uintptr_t ReverseIndexMART::getLeafValue(Node* node) {
-  // The the value stored in the pseudo-leaf
-  return reinterpret_cast<uintptr_t>(node)>>1;
-}
-
-bool ReverseIndexMART::isLeaf(Node* node) {
-  // Is the node a leaf?
-  return reinterpret_cast<uintptr_t>(node)&1;
 }
 
 uint8_t flipSign(uint8_t keyByte) {
@@ -782,6 +848,7 @@ void ReverseIndexMART::bulkInsert(size_t size, string* values) {
   uint32_t searchPos;
   tree = createRootNode(size, values, searchPos);
   bulkInsertRec(size, values, searchPos, tree);
+  tree->print(0);
 }
 
 bool ReverseIndexMART::lookup(std::string key, uint64_t& value) {

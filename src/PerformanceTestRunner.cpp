@@ -153,22 +153,12 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 }
 
 inline bool hasDictionary(char counter) {
-  return counter < 6;
+  return counter < 1;
 }
 
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
     case 0:
-      return new BTreeDictionary();
-    case 1:
-      return new BPlusTreeDictionary();
-    case 2:
-      return new ARTDictionary();
-    case 3:
-      return new ARTcDictionary();
-    case 4:
-      return new HATDictionary();
-    case 5:
       return new MARTDictionary();
   }
   assert(false);
