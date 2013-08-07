@@ -79,8 +79,8 @@ class Page {
       writeString(dataPtr, value);
     }
 
-    void writeDelta(char*& dataPtr, const std::string& fullString, const std::string& delta) {
-      write<uint64_t>(dataPtr, fullString.size()-delta.size());
+    void writeDelta(char*& dataPtr, const std::string& fullString, const std::string& delta, uint64_t prefixSize) {
+      write<uint64_t>(dataPtr, prefixSize);
       writeValue(dataPtr, delta);
     }
 

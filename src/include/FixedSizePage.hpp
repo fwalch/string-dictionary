@@ -14,9 +14,10 @@ class FixedSizePage {
 
     const uint64_t size = TSize;
     FixedSizePage<TSize>* nextPage;
+    uint64_t pageId;
     char data[TSize];
 
-    FixedSizePage() : nextPage(nullptr) {
+    FixedSizePage(uint64_t id) : nextPage(nullptr), pageId(id) {
     }
 
     FixedSizePage(const FixedSizePage&) = delete;
@@ -54,12 +55,16 @@ class FixedSizePage {
       dataPtr += value.size();
     }
 
-    iterator getString(uint32_t offset, uint64_t id) {
-      return iterator(this);
+    iterator getString(uint64_t id) {
+      return iterator(this).find(id);
     }
 
-    iterator getId(uint32_t offset, const std::string& str) {
-      return iterator(this);
+    iterator get(uint16_t delta) {
+      return iterator(this).gotoDelta(delta);
+    }
+
+    iterator getId(const std::string& str) {
+      return iterator(this).find(str);
     }
 
     static inline void writeFlag(char*& dataPtr, HeaderTypes flag) {
@@ -79,8 +84,8 @@ class FixedSizePage {
       writeString(dataPtr, value);
     }
 
-    void writeDelta(char*& dataPtr, const std::string& fullString, const std::string& delta) {
-      write<uint64_t>(dataPtr, fullString.size()-delta.size());
+    void writeDelta(char*& dataPtr, const std::string& fullString, const std::string& delta, uint64_t prefixSize) {
+      write<uint64_t>(dataPtr, prefixSize);
       writeValue(dataPtr, delta);
     }
 
@@ -202,10 +207,146 @@ class FixedSizePage {
         }
 
         iterator& find(uint64_t id) {
+          do {
+            char* readPtr = dataPtr;
+            readFlag(readPtr);
+            uint64_t foundId = read<uint64_t>(readPtr);
+            if (id == foundId) {
+              return *this;
+            }
+
+            HeaderTypes flag = readFlag(dataPtr);
+            // Not found; skip according to flag
+            if (flag == HeaderTypes::StartOfPage) {
+              advance<uint64_t>();
+              uint64_t size = read<uint64_t>(dataPtr);
+              const char* value = readString(dataPtr, size);
+              fullString = std::string(value, value+size);
+            }
+            else if (flag == HeaderTypes::Delta) {
+              advance<uint64_t>();
+              advance<uint64_t>();
+              uint64_t size = read<uint64_t>(dataPtr);
+              advance(size);
+            }
+
+            readPtr = dataPtr;
+            flag = readFlag(readPtr);
+            if (flag == HeaderTypes::StartOfPage || flag == HeaderTypes::Delta) {
+              std::cout << "Advance inside page" << std::endl;
+            }
+            else {
+              std::cout << "Set dataPtr to null" << std::endl;
+              dataPtr = nullptr;
+            }
+          }
+          while (dataPtr != nullptr);
+
           return *this;
         }
 
-        iterator& find(const std::string& value) {
+        iterator& find(const std::string& searchValue) {
+          uint64_t pos = 0;
+          do {
+            char* readPtr = dataPtr;
+            HeaderTypes flag = readFlag(readPtr);
+            read<uint64_t>(readPtr);
+
+            if (flag == HeaderTypes::StartOfPage) {
+              // String is stored uncompressed
+              uint64_t size = read<uint64_t>(readPtr);
+              const char* value = readString(readPtr, size);
+
+              assert(pos == 0);
+              while(pos < size && pos < searchValue.size() && searchValue[pos] == value[pos]) {
+                pos++;
+              }
+              std::cout << "Find String search pos: " << pos << std::endl;
+              if (pos == size) {
+                // string found; return
+                return *this;
+              }
+              fullString = std::string(value, value+size);
+            }
+            else if (flag == HeaderTypes::Delta) {
+              uint64_t prefixSize = read<uint64_t>(readPtr);
+              uint64_t size = read<uint64_t>(readPtr);
+              if (prefixSize == pos && prefixSize + size == searchValue.size()) {
+                // Possible match; compare characters
+                const char* value = readString(readPtr, size);
+
+                uint64_t searchPos = 0;
+                while(searchPos+pos < searchValue.size() && searchValue[pos+searchPos] == value[searchPos]) {
+                  searchPos++;
+                }
+
+                if (searchPos+pos == searchValue.size()) {
+                  // string found; return
+                  return *this;
+                }
+              }
+            }
+
+            flag = readFlag(dataPtr);
+            // Not found; skip according to flag
+            if (flag == HeaderTypes::StartOfPage) {
+              advance<uint64_t>();
+              uint64_t size = read<uint64_t>(dataPtr);
+              advance(size);
+            }
+            else if (flag == HeaderTypes::Delta) {
+              advance<uint64_t>();
+              advance<uint64_t>();
+              uint64_t size = read<uint64_t>(dataPtr);
+              advance(size);
+            }
+
+            readPtr = dataPtr;
+            flag = readFlag(readPtr);
+            if (flag == HeaderTypes::StartOfPage || flag == HeaderTypes::Delta) {
+              std::cout << "Advance inside page" << std::endl;
+            }
+            else {
+              std::cout << "Set dataPtr to null" << std::endl;
+              dataPtr = nullptr;
+            }
+          }
+          while (dataPtr != nullptr);
+
+          return *this;
+        }
+
+        iterator& gotoDelta(uint16_t delta) {
+          uint16_t pos = 0;
+          while (pos < delta) {
+            HeaderTypes flag = readFlag(dataPtr);
+            // Not found; skip according to flag
+            if (flag == HeaderTypes::StartOfPage) {
+              advance<uint64_t>();
+              uint64_t size = read<uint64_t>(dataPtr);
+              const char* value = readString(dataPtr, size);
+              fullString = std::string(value, value+size);
+            }
+            else if (flag == HeaderTypes::Delta) {
+              advance<uint64_t>();
+              advance<uint64_t>();
+              uint64_t size = read<uint64_t>(dataPtr);
+              advance(size);
+            }
+
+            pos++;
+          }
+
+          char* readPtr = dataPtr;
+          HeaderTypes flag = readFlag(readPtr);
+          if (flag == HeaderTypes::StartOfPage || flag == HeaderTypes::Delta) {
+            std::cout << "Advance inside page" << std::endl;
+          }
+          else {
+            std::cout << "Set dataPtr to null" << std::endl;
+            dataPtr = nullptr;
+          }
+
           return *this;
         }
     };

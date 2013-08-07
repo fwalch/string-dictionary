@@ -4,8 +4,8 @@
 
 using namespace std;
 
-inline string delta(const string& ref, const string& value) {
-  uint64_t pos = 0;
+inline string delta(const string& ref, const string& value, uint64_t& pos) {
+  pos = 0;
   while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
     pos++;
   }
@@ -57,7 +57,8 @@ TEST(Page, Create) {
     }
     else {
       // Will insert delta
-      string deltaValue = delta(*deltaRef, pair.second);
+      uint64_t prefixSize;
+      string deltaValue = delta(*deltaRef, pair.second, prefixSize);
       if (dataPtr != nullptr && dataPtr + deltaHeaderSize + deltaValue.size() > endOfPage) {
         // "Finish" page
         page->endPage(dataPtr);
@@ -86,11 +87,12 @@ TEST(Page, Create) {
     }
     else {
       assert(deltaRef != nullptr);
-      string deltaValue = delta(*deltaRef, pair.second);
+      uint64_t prefixSize;
+      string deltaValue = delta(*deltaRef, pair.second, prefixSize);
 
       page->startDelta(dataPtr);
       page->writeId(dataPtr, pair.first);
-      page->writeDelta(dataPtr, *deltaRef, deltaValue);
+      page->writeDelta(dataPtr, *deltaRef, deltaValue, prefixSize);
     }
 
     i++;

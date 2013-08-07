@@ -4,8 +4,8 @@
 
 using namespace std;
 
-inline string delta(const string& ref, const string& value) {
-  uint64_t pos = 0;
+inline string delta(const string& ref, const string& value, uint64_t& pos) {
+  pos = 0;
   while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
     pos++;
   }
@@ -46,7 +46,8 @@ TEST(FixedSizePage, Create) {
   for (const auto& pair : insertValues) {
     if (deltaRef != nullptr) {
       // Will insert delta
-      string deltaValue = delta(*deltaRef, pair.second);
+      uint64_t prefixSize;
+      string deltaValue = delta(*deltaRef, pair.second, prefixSize);
       if (dataPtr != nullptr && dataPtr + deltaHeaderSize + deltaValue.size() > endOfPage) {
         // "Finish" page
         page->endPage(dataPtr);
@@ -82,17 +83,18 @@ TEST(FixedSizePage, Create) {
     }
 
     // Write delta
-    string deltaValue = delta(*deltaRef, pair.second);
+    uint64_t prefixSize;
+    string deltaValue = delta(*deltaRef, pair.second, prefixSize);
     page->beginDelta(dataPtr);
     page->writeId(dataPtr, pair.first);
-    page->writeDelta(dataPtr, *deltaRef, deltaValue);
+    page->writeDelta(dataPtr, *deltaRef, deltaValue, prefixSize);
   }
   page->endPage(dataPtr);
   pages.push_back(page);
 
   page = pages.front();
 
-  for (auto iterator = page->getString(0, 0); iterator; ++iterator) {
+  for (auto iterator = page->getString(0); iterator; ++iterator) {
     auto leaf = *iterator;
     cout << leaf.id << " " << leaf.value << endl;
   }
