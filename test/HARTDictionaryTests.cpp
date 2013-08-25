@@ -23,9 +23,9 @@ TEST(HARTDictionary, BulkInsert) {
     "cd"
   };
 
-  //ASSERT_EQ(0, dict.size());
+  ASSERT_EQ(0, dict.size());
   ASSERT_TRUE(dict.bulkInsert(4, values));
-  //ASSERT_EQ(4, dict.size());
+  ASSERT_EQ(4, dict.size());
 
   for (size_t i = 0; i < 4; i++) {
     uint64_t id;

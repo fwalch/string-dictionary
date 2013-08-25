@@ -17,7 +17,7 @@ endif
 
 # Define clang flags
 ifeq ($(CXX),clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-padded -Wno-vla -Wno-documentation -Wno-shadow --std=c++11 -Wno-unused-parameter
+	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-padded -Wno-vla -Wno-documentation -Wno-shadow --std=c++11 -Wno-unused-parameter -Wno-unused-variable
 endif
 ifeq ($(CC),clang)
 	CFLAGS = -g -Weverything -Werror --std=c99
@@ -34,6 +34,8 @@ endif
 # Build type flags
 DBGFLAGS := -O0 -DDEBUG
 RELFLAGS := -O3
+
+LDFLAGS = -ltcmalloc
 
 # Configuration variables
 OBJ_DIR := obj

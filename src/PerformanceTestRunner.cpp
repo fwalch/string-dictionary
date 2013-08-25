@@ -159,7 +159,7 @@ inline bool hasDictionary(char counter) {
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
     case 0:
-      return new MARTDictionary();
+      return new HARTDictionary();
   }
   assert(false);
   return nullptr;

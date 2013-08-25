@@ -4,7 +4,7 @@
 using namespace std;
 
 uint8_t* ART::loadKey(uintptr_t leafValue) {
-  uint64_t tid = (*dict->decodeLeafValue(leafValue)).id;
+  uint64_t tid = (*dict->decodeLeaf(leafValue)).id;
 
   reinterpret_cast<uint64_t*>(lastKey)[0] = __builtin_bswap64(tid);
   return lastKey;
@@ -48,18 +48,7 @@ uint64_t HARTDictionary::insert(string value) {
   return *idPtr;
 }
 
-inline string delta(const string& ref, const string& value, uint64_t& pos) {
-  pos = 0;
-  while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
-    pos++;
-  }
-
-  auto delta = value.substr(pos, value.size()-pos);
-  cout << "Delta between " << ref << " & " << value << ":" << delta << endl;
-  return delta;
-}
-
-uint64_t HARTDictionary::encodeLeafValue(PageType* page, uint16_t deltaNumber) {
+uint64_t HARTDictionary::encodeLeaf(PageType* page, uint16_t deltaNumber) {
   uint64_t leafValue = reinterpret_cast<uint64_t>(page);
   leafValue = leafValue << 16;
   leafValue |= static_cast<uint64_t>(deltaNumber);
@@ -67,7 +56,18 @@ uint64_t HARTDictionary::encodeLeafValue(PageType* page, uint16_t deltaNumber) {
   return leafValue;
 }
 
-HARTDictionary::PageType::iterator HARTDictionary::decodeLeafValue(uint64_t leafValue) {
+void HARTDictionary::insertLeaf(PageType* page, uint16_t deltaNumber, std::string value, uint64_t id) {
+  uint64_t leafValue = encodeLeaf(page, deltaNumber);
+
+  bool inserted = false;
+  uint64_t* valuePtr = hattrie_get(reverseIndex, value.c_str(), value.size()+1, &inserted);
+  *valuePtr = leafValue;
+  assert(inserted);
+
+  index.insert(id, leafValue);
+}
+
+HARTDictionary::PageType::Iterator HARTDictionary::decodeLeaf(uint64_t leafValue) {
   PageType* page = reinterpret_cast<PageType*>(leafValue >> 16);
   uint16_t deltaNumber = leafValue & 0xFFFF;
 
@@ -84,83 +84,10 @@ bool HARTDictionary::bulkInsert(size_t size, string* values) {
     insertValues.push_back(make_pair(nextId++, values[i]));
   }
 
-  vector<PageType*> pages;
-  PageType* page = nullptr;
-  const char* endOfPage = nullptr;
-  char* dataPtr = nullptr;
-  uint16_t deltaNumber = 0;
-  const uint64_t pageHeaderSize = sizeof(uint8_t) + 2*sizeof(uint64_t);
-  const uint64_t deltaHeaderSize = sizeof(uint8_t) + 3*sizeof(uint64_t);
-
-  const string* deltaRef = nullptr;
-  for (const auto& pair : insertValues) {
-    if (deltaRef != nullptr) {
-      // Will insert delta
-      uint64_t prefixSize;
-      string deltaValue = delta(*deltaRef, pair.second, prefixSize);
-      if (dataPtr != nullptr && dataPtr + deltaHeaderSize + deltaValue.size() > endOfPage) {
-        // "Finish" page
-        page->endPage(dataPtr);
-        pages.push_back(page);
-        page = nullptr;
-      }
-    }
-
-    if (page == nullptr) {
-      // Create new page
-      cout << "Create page" << endl;
-      page = new PageType(pageId++);
-      if (pages.size() > 0) {
-        pages.back()->nextPage = page;
-      }
-      dataPtr = page->data;
-      endOfPage = page->data + page->size - sizeof(uint8_t);
-      deltaNumber = 0;
-
-      deltaRef = &pair.second;
-
-      if (dataPtr + pageHeaderSize + pair.second.size() > endOfPage) {
-        cout << "Cannot write one uncompressed string to the page" << endl;
-        assert(false);
-      }
-
-      page->beginPage(dataPtr);
-
-      // Write uncompressed value
-      page->writeId(dataPtr, pair.first);
-      page->writeValue(dataPtr, pair.second);
-
-      uint64_t leafValue = encodeLeafValue(page, deltaNumber++);
-
-      bool inserted = false;
-      uint64_t* valuePtr = hattrie_get(reverseIndex, pair.second.c_str(), pair.second.size()+1, &inserted);
-      *valuePtr = leafValue;
-      assert(inserted);
-
-      index.insert(pair.first, leafValue);
-
-      continue;
-    }
-
-    // Write delta
-    uint64_t prefixSize;
-    string deltaValue = delta(*deltaRef, pair.second, prefixSize);
-    page->beginDelta(dataPtr);
-    page->writeId(dataPtr, pair.first);
-    page->writeDelta(dataPtr, *deltaRef, deltaValue, prefixSize);
-
-    uint64_t leafValue = encodeLeafValue(page, deltaNumber++);
-
-    bool inserted = false;
-    uint64_t* valuePtr = hattrie_get(reverseIndex, pair.second.c_str(), pair.second.size()+1, &inserted);
-    *valuePtr = leafValue;
-    assert(inserted);
-
-    index.insert(pair.first, leafValue);
-  }
-
-  page->endPage(dataPtr);
-  pages.push_back(page);
+  PageType::Loader loader;
+  PageType::Loader::CallbackType callback;
+  callback = std::bind(&HARTDictionary::insertLeaf, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+  loader.load(insertValues, callback);
 
   return true;
 }
@@ -187,7 +114,7 @@ bool HARTDictionary::lookup(std::string value, uint64_t& id) {
     return false;
   }
 
-  auto iterator = decodeLeafValue(*leafPtr);
+  auto iterator = decodeLeaf(*leafPtr);
   assert(iterator);
 
   id = (*iterator).id;
@@ -197,7 +124,7 @@ bool HARTDictionary::lookup(std::string value, uint64_t& id) {
 bool HARTDictionary::lookup(uint64_t id, std::string& value) {
   uint64_t leafValue;
   if (index.lookup(id, leafValue)) {
-    auto iterator = decodeLeafValue(leafValue);
+    auto iterator = decodeLeaf(leafValue);
     assert(iterator);
 
     value = (*iterator).value;

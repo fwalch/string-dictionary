@@ -6,208 +6,143 @@
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <vector>
+#include <functional>
 
-template<uint64_t TSize, uint8_t TFrequency>
+namespace page {
+  typedef uint8_t HeaderType;
+  typedef uint64_t IdType;
+  typedef uint64_t StringSizeType;
+  typedef uint64_t PrefixSizeType;
+
+  enum Header : HeaderType {
+    StartOfPrefix = 'x',
+    StartOfDelta = 'y',
+    EndOfPage = 'z'
+  };
+
+  // Advance
+
+  template<class T> void advance(char*& dataPtr) {
+    dataPtr += sizeof(T);
+  }
+
+  static inline void advance(char*& dataPtr, uint64_t size) {
+    dataPtr += size;
+  }
+
+  // Read
+
+  template<class T> static inline T read(char*& dataPtr) {
+    T value = *reinterpret_cast<T*>(dataPtr);
+    dataPtr += sizeof(T);
+    return value;
+  }
+
+  static inline const char* readString(char*& dataPtr, StringSizeType size) {
+    const char* value = const_cast<const char*>(dataPtr);
+    dataPtr += size;
+    return value;
+  }
+
+  static inline Header readHeader(char*& dataPtr) {
+    return static_cast<Header>(read<HeaderType>(dataPtr));
+  }
+
+  // Write
+
+  template<class T> static inline void write(char*& dataPtr, T value) {
+    *reinterpret_cast<T*>(dataPtr) = value;
+    dataPtr += sizeof(T);
+  }
+
+  static inline void writeString(char*& dataPtr, const std::string& value) {
+    memcpy(dataPtr, value.c_str(), value.size());
+    dataPtr += value.size();
+  }
+
+  static inline void writeHeader(char*& dataPtr, Header flag) {
+    write<HeaderType>(dataPtr, flag);
+  }
+
+  struct Leaf {
+    uint64_t id;
+    std::string value;
+  };
+}
+
+template<uint64_t TSize, class TType>
 class Page {
-  public:
-    class iterator;
-
-    const uint64_t size = TSize;
-    Page<TSize, TFrequency>* nextPage;
+  protected:
+    TType* nextPage;
     char data[TSize];
 
     Page() : nextPage(nullptr) {
     }
 
-    Page(const Page&) = delete;
-    Page& operator=(const Page&) = delete;
+  public:
+    const uint64_t size = TSize;
 
-    enum HeaderTypes : uint8_t {
-      Prefix = 'x',
-      Delta = 'y',
-      EndOfPage = 'z'
-    };
-
-    static inline const char* readString(char*& dataPtr, uint64_t size) {
-      const char* value = const_cast<const char*>(dataPtr);
-      dataPtr += size;
-      std::cout << "Reading string " << std::string(value, value+size) << std::endl;
-      return value;
-    }
-
-    template<class T> static inline void write(char*& dataPtr, T value) {
-      *reinterpret_cast<T*>(dataPtr) = value;
-      dataPtr += sizeof(T);
-      std::cout << "Writing " << value << std::endl;
-    }
-
-    template<class T> static inline T read(char*& dataPtr) {
-      T value = *reinterpret_cast<T*>(dataPtr);
-      dataPtr += sizeof(T);
-      std::cout << "Reading " << value << std::endl;
-      return value;
-    }
-
-    static inline void writeString(char*& dataPtr, const std::string& value) {
-      memcpy(dataPtr, value.c_str(), value.size());
-      std::cout << "Writing string " << value << std::endl;
-      dataPtr += value.size();
-    }
-
-    iterator getString(uint32_t offset, uint64_t id) {
-      return iterator(this);
-    }
-
-    iterator getId(uint32_t offset, const std::string& str) {
-      return iterator(this);
-    }
-
-    static inline void writeFlag(char*& dataPtr, HeaderTypes flag) {
-      write<uint8_t>(dataPtr, flag);
-    }
-
-    void startPrefix(char*& dataPtr) {
-      writeFlag(dataPtr, HeaderTypes::Prefix);
-    }
-
-    void writeId(char*& dataPtr, uint64_t id) {
-      write<uint64_t>(dataPtr, id);
-    }
-
-    void writeValue(char*& dataPtr, const std::string& value) {
-      write<uint64_t>(dataPtr, value.size());
-      writeString(dataPtr, value);
-    }
-
-    void writeDelta(char*& dataPtr, const std::string& fullString, const std::string& delta, uint64_t prefixSize) {
-      write<uint64_t>(dataPtr, prefixSize);
-      writeValue(dataPtr, delta);
-    }
-
-    void startDelta(char*& dataPtr) {
-      writeFlag(dataPtr, HeaderTypes::Delta);
-    }
-
-    static inline HeaderTypes readFlag(char*& dataPtr) {
-      return static_cast<HeaderTypes>(read<uint8_t>(dataPtr));
-    }
-
-    void endPage(char*& dataPtr) {
-      writeFlag(dataPtr, HeaderTypes::EndOfPage);
-    }
-
-    struct LeafValue {
-      uint64_t id;
-      std::string value;
-    };
-
-    class iterator {
-      private:
+    class Iterator {
+      protected:
         char* dataPtr;
-        Page<TSize, TFrequency>* nextPage;
+        TType* nextPage;
         std::string fullString;
-        //TODO: string size uint64_t??
 
       public:
-        iterator(Page<TSize, TFrequency>* pagePtr) : dataPtr(pagePtr->data), nextPage(pagePtr->nextPage) {
+        Iterator(TType* pagePtr) : dataPtr(pagePtr->data), nextPage(pagePtr->nextPage) {
         }
 
-        const LeafValue operator*() {
-          std::cout << "Dereferencing iterator" << std::endl;
-          char* readPtr = dataPtr;
-          HeaderTypes flag = readFlag(readPtr);
-          if (flag == HeaderTypes::Prefix) {
-            std::cout << "Read full string" << std::endl;
-            uint64_t id = read<uint64_t>(readPtr);
-            uint64_t size = read<uint64_t>(readPtr);
-            const char* value = readString(readPtr, size);
-            fullString = std::string(value, value+size);
+        virtual ~Iterator() { }
 
-            return LeafValue {
-              id,
-              fullString
-            };
+        /*virtual const page::Leaf operator*();
+        virtual Iterator& operator++();
+        virtual operator bool();
+
+        virtual Iterator& find(uint64_t id);
+        virtual Iterator& find(const std::string& value);
+        virtual Iterator& gotoDelta(uint16_t delta);*/
+    };
+
+    class Loader {
+      protected:
+        inline std::string delta(const std::string& ref, const std::string& value, uint64_t& pos) {
+          pos = 0;
+          while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
+            pos++;
           }
-          else {
-            assert(flag == HeaderTypes::Delta);
-            std::cout << "Read delta" << std::endl;
 
-            uint64_t id = read<uint64_t>(readPtr);
-            uint64_t prefixSize = read<uint64_t>(readPtr);
-            uint64_t size = read<uint64_t>(readPtr);
-            const char* value = readString(readPtr, size);
-
-            std::string output;
-            output.reserve(prefixSize + size +1);
-            //TODO: not efficient
-            output.insert(0, fullString.substr(0, prefixSize));
-            output.insert(prefixSize, value, size);
-            output[prefixSize+size] = '\0';
-
-            return LeafValue {
-              id,
-              output
-            };
-          }
+          auto delta = value.substr(pos, value.size()-pos);
+          std::cout << "Delta between " << ref << " & " << value << ":" << delta << std::endl;
+          return delta;
         }
 
-        template<class T> void advance() {
-          dataPtr += sizeof(T);
+        // Start/End blocks
+        void startPrefix(char*& dataPtr) {
+          writeHeader(dataPtr, page::Header::StartOfPrefix);
         }
 
-        void advance(uint64_t size) {
-          dataPtr += size;
+        void startDelta(char*& dataPtr) {
+          writeHeader(dataPtr, page::Header::StartOfDelta);
         }
 
-        iterator& operator++() {
-          std::cout << "Increasing iterator" << std::endl;
-          HeaderTypes flag = readFlag(dataPtr);
-          if (flag == HeaderTypes::Prefix) {
-            advance<uint64_t>();
-            uint64_t size = read<uint64_t>(dataPtr);
-            advance(size);
-          }
-          else if (flag == HeaderTypes::Delta) {
-            advance<uint64_t>();
-            advance<uint64_t>();
-            uint64_t size = read<uint64_t>(dataPtr);
-            advance(size);
-          }
-
-          char* readPtr = dataPtr;
-          flag = readFlag(readPtr);
-          if (flag == HeaderTypes::Prefix || flag == HeaderTypes::Delta) {
-            std::cout << "Advance inside page" << std::endl;
-          }
-          else if (flag == HeaderTypes::EndOfPage && nextPage != nullptr) {
-            std::cout << "Advance to next page" << std::endl;
-            dataPtr = nextPage->data;
-            nextPage = nextPage->nextPage;
-          }
-          else {
-            std::cout << "Set dataPtr to null" << std::endl;
-            dataPtr = nullptr;
-          }
-          return *this;
+        void endPage(char*& dataPtr) {
+          writeHeader(dataPtr, page::Header::EndOfPage);
         }
 
-        operator bool() {
-          std::cout << "Checking condition" << std::endl;
-          if (dataPtr == nullptr) {
-            return false;
-          }
-          char* readPtr = dataPtr;
-          HeaderTypes flag = readFlag(readPtr);
-          return (flag == HeaderTypes::Prefix || flag == HeaderTypes::Delta)
-            || (flag == HeaderTypes::EndOfPage && nextPage != nullptr);
+        // Write values
+        void writeId(char*& dataPtr, page::IdType id) {
+          page::write<page::IdType>(dataPtr, id);
         }
 
-        iterator& find(uint64_t id) {
-          return *this;
+        void writeValue(char*& dataPtr, const std::string& value) {
+          page::write<uint64_t>(dataPtr, value.size());
+          page::writeString(dataPtr, value);
         }
 
-        iterator& find(const std::string& value) {
-          return *this;
+        void writeDelta(char*& dataPtr, const std::string& delta, uint64_t prefixSize) {
+          page::write<uint64_t>(dataPtr, prefixSize);
+          writeValue(dataPtr, delta);
         }
     };
 };

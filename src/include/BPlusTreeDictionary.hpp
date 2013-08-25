@@ -7,7 +7,7 @@
 #include "stx/btree_map.hpp"
 
 /**
- * Dictionary that uses two B-trees as indexes.
+ * Dictionary that uses two B+-trees as indexes.
  */
 class BPlusTreeDictionary : public Dictionary {
   public:

@@ -11,6 +11,7 @@
 #include "ARTcDictionary.hpp"
 #include "BTreeDictionary.hpp"
 #include "BPlusTreeDictionary.hpp"
+#include "HARTDictionary.hpp"
 
 std::ostream& operator<<(std::ostream &stream, const Dictionary* dict);
 

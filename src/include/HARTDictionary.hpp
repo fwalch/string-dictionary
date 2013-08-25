@@ -5,7 +5,7 @@
 #include "hat-trie.h"
 #include "Dictionary.hpp"
 #include <cassert>
-#include "FixedSizePage.hpp"
+#include "SingleUncompressedPage.hpp"
 
 class HARTDictionary;
 
@@ -38,11 +38,11 @@ class HARTDictionary : public Dictionary {
   private:
     ART index; // ID -> string
     hattrie_t* reverseIndex; // string -> ID
-    typedef FixedSizePage<64> PageType;
-    uint64_t pageId = 0;
+    typedef SingleUncompressedPage<512> PageType;
 
-    uint64_t encodeLeafValue(PageType* page, uint16_t deltaNumber);
-    PageType::iterator decodeLeafValue(uint64_t leafValue);
+    uint64_t encodeLeaf(PageType* page, uint16_t deltaNumber);
+    PageType::Iterator decodeLeaf(uint64_t leafValue);
+    void insertLeaf(PageType* page, uint16_t deltaNumber, std::string value, uint64_t id);
 
   public:
     HARTDictionary();
