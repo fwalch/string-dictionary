@@ -69,6 +69,48 @@ namespace page {
     uint64_t id;
     std::string value;
   };
+
+  class Loader {
+    protected:
+      inline std::string delta(const std::string& ref, const std::string& value, uint64_t& pos) {
+        pos = 0;
+        while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
+          pos++;
+        }
+
+        auto delta = value.substr(pos, value.size()-pos);
+        std::cout << "Delta between " << ref << " & " << value << ":" << delta << std::endl;
+        return delta;
+      }
+
+      // Start/End blocks
+      void startPrefix(char*& dataPtr) {
+        writeHeader(dataPtr, page::Header::StartOfPrefix);
+      }
+
+      void startDelta(char*& dataPtr) {
+        writeHeader(dataPtr, page::Header::StartOfDelta);
+      }
+
+      void endPage(char*& dataPtr) {
+        writeHeader(dataPtr, page::Header::EndOfPage);
+      }
+
+      // Write values
+      void writeId(char*& dataPtr, page::IdType id) {
+        page::write<page::IdType>(dataPtr, id);
+      }
+
+      void writeValue(char*& dataPtr, const std::string& value) {
+        page::write<uint64_t>(dataPtr, value.size());
+        page::writeString(dataPtr, value);
+      }
+
+      void writeDelta(char*& dataPtr, const std::string& delta, uint64_t prefixSize) {
+        page::write<uint64_t>(dataPtr, prefixSize);
+        writeValue(dataPtr, delta);
+      }
+  };
 }
 
 template<uint64_t TSize, class TType>
@@ -92,59 +134,8 @@ class Page {
       public:
         Iterator(TType* pagePtr) : dataPtr(pagePtr->data), nextPage(pagePtr->nextPage) {
         }
-
-        virtual ~Iterator() { }
-
-        /*virtual const page::Leaf operator*();
-        virtual Iterator& operator++();
-        virtual operator bool();
-
-        virtual Iterator& find(uint64_t id);
-        virtual Iterator& find(const std::string& value);
-        virtual Iterator& gotoDelta(uint16_t delta);*/
     };
 
-    class Loader {
-      protected:
-        inline std::string delta(const std::string& ref, const std::string& value, uint64_t& pos) {
-          pos = 0;
-          while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
-            pos++;
-          }
-
-          auto delta = value.substr(pos, value.size()-pos);
-          std::cout << "Delta between " << ref << " & " << value << ":" << delta << std::endl;
-          return delta;
-        }
-
-        // Start/End blocks
-        void startPrefix(char*& dataPtr) {
-          writeHeader(dataPtr, page::Header::StartOfPrefix);
-        }
-
-        void startDelta(char*& dataPtr) {
-          writeHeader(dataPtr, page::Header::StartOfDelta);
-        }
-
-        void endPage(char*& dataPtr) {
-          writeHeader(dataPtr, page::Header::EndOfPage);
-        }
-
-        // Write values
-        void writeId(char*& dataPtr, page::IdType id) {
-          page::write<page::IdType>(dataPtr, id);
-        }
-
-        void writeValue(char*& dataPtr, const std::string& value) {
-          page::write<uint64_t>(dataPtr, value.size());
-          page::writeString(dataPtr, value);
-        }
-
-        void writeDelta(char*& dataPtr, const std::string& delta, uint64_t prefixSize) {
-          page::write<uint64_t>(dataPtr, prefixSize);
-          writeValue(dataPtr, delta);
-        }
-    };
 };
 
 #endif

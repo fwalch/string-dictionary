@@ -17,11 +17,11 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
     MultiUncompressedPage(const MultiUncompressedPage&) = delete;
     MultiUncompressedPage& operator=(const MultiUncompressedPage&) = delete;
 
-    Iterator getString(uint64_t id) {
+    Iterator getId(uint64_t id) {
       return Iterator(this).find(id);
     }
 
-    Iterator getId(const std::string& str) {
+    Iterator getString(const std::string& str) {
       return Iterator(this).find(str);
     }
 
@@ -128,7 +128,7 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
         }
     };
 
-    class Loader : public Page<TSize, MultiUncompressedPage<TSize, TFrequency>>::Loader {
+    class Loader : public page::Loader {
       public:
         typedef std::function<void(MultiUncompressedPage<TSize, TFrequency>*, std::string, uint64_t)> CallbackType;
         void load(std::vector<std::pair<uint64_t, std::string>> values, CallbackType const &callback) {

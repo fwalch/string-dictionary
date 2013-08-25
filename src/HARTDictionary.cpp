@@ -99,7 +99,7 @@ bool HARTDictionary::update(uint64_t& id, std::string value) {
   }
 
   PageType* page = *reinterpret_cast<PageType**>(leafPtr);
-  auto iterator = page->getString(id);
+  auto iterator = page->getId(id);
   assert(iterator);
 
   if (value != (*iterator).value) {

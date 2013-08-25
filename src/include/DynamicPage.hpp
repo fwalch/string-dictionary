@@ -1,21 +1,18 @@
-#ifndef H_SingleUncompressedPage
-#define H_SingleUncompressedPage
+#ifndef H_DynamicPage
+#define H_DynamicPage
 
 #include "Page.hpp"
 
-/**
- * Fixed-size page implementation that holds a single uncompressed string per page.
- */
-template<uint64_t TSize>
-class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>> {
+class DynamicPage {
   public:
     class Iterator;
 
-    SingleUncompressedPage() : Page<TSize, SingleUncompressedPage<TSize>>() {
+    DynamicPage* nextPage;
+
+    char* data() {
+      return &(reinterpret_cast<char*>(this)[sizeof(DynamicPage)]);
     }
 
-    SingleUncompressedPage(const SingleUncompressedPage&) = delete;
-    SingleUncompressedPage& operator=(const SingleUncompressedPage&) = delete;
     Iterator getId(uint64_t id) {
       return Iterator(this).find(id);
     }
@@ -24,82 +21,14 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
       return Iterator(this).find(str);
     }
 
-    Iterator get(uint16_t delta) {
-      return Iterator(this).gotoDelta(delta);
-    }
+    class Iterator {
+      protected:
+        char* dataPtr;
+        DynamicPage* nextPage;
+        std::string fullString;
 
-    class Loader : public page::Loader {
       public:
-        typedef std::function<void(SingleUncompressedPage<TSize>*, uint16_t, std::string, uint64_t)> CallbackType;
-        void load(std::vector<std::pair<uint64_t, std::string>> values, CallbackType const &callback) {
-          SingleUncompressedPage<TSize>* currentPage = nullptr;
-          SingleUncompressedPage<TSize>* lastPage = nullptr;
-          const char* endOfPage = nullptr;
-          char* dataPtr = nullptr;
-          uint16_t deltaNumber = 0;
-          const uint64_t pageHeaderSize = sizeof(uint8_t) + 2*sizeof(uint64_t);
-          const uint64_t deltaHeaderSize = sizeof(uint8_t) + 3*sizeof(uint64_t);
-
-          const std::string* deltaRef = nullptr;
-          for (const auto& pair : values) {
-            if (deltaRef != nullptr) {
-              // Will insert delta
-              uint64_t prefixSize;
-              std::string deltaValue = this->delta(*deltaRef, pair.second, prefixSize);
-              if (dataPtr != nullptr && dataPtr + deltaHeaderSize + deltaValue.size() > endOfPage) {
-                // "Finish" page
-                this->endPage(dataPtr);
-                lastPage = currentPage;
-                currentPage = nullptr;
-              }
-            }
-
-            if (currentPage == nullptr) {
-              // Create new page
-              std::cout << "Create page" << std::endl;
-              currentPage = new SingleUncompressedPage<TSize>();
-              if (lastPage != nullptr) {
-                lastPage->nextPage = currentPage;
-              }
-              dataPtr = currentPage->data;
-              endOfPage = currentPage->data + currentPage->size - sizeof(uint8_t);
-              deltaNumber = 0;
-
-              deltaRef = &pair.second;
-
-              if (dataPtr + pageHeaderSize + pair.second.size() > endOfPage) {
-                std::cout << "Cannot write one uncompressed string to the page" << std::endl;
-                assert(false);
-              }
-
-              this->startPrefix(dataPtr);
-
-              // Write uncompressed value
-              this->writeId(dataPtr, pair.first);
-              this->writeValue(dataPtr, pair.second);
-
-              callback(currentPage, deltaNumber++, pair.second, pair.first);
-              continue;
-            }
-
-            // Write delta
-            uint64_t prefixSize;
-            std::string deltaValue = this->delta(*deltaRef, pair.second, prefixSize);
-            this->startDelta(dataPtr);
-            this->writeId(dataPtr, pair.first);
-            this->writeDelta(dataPtr, deltaValue, prefixSize);
-
-            callback(currentPage, deltaNumber++, pair.second, pair.first);
-          }
-
-          this->endPage(dataPtr);
-          lastPage = currentPage;
-        }
-    };
-
-    class Iterator : public Page<TSize, SingleUncompressedPage<TSize>>::Iterator {
-      public:
-        Iterator(SingleUncompressedPage<TSize>* pagePtr) : Page<TSize, SingleUncompressedPage<TSize>>::Iterator(pagePtr) {
+        Iterator(DynamicPage* pagePtr) : dataPtr(pagePtr->data()), nextPage(pagePtr->nextPage) {
         }
 
         const page::Leaf operator*() {
@@ -163,7 +92,7 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
           }
           else if (header == page::Header::EndOfPage && this->nextPage != nullptr) {
             std::cout << "Advance to next page" << std::endl;
-            this->dataPtr = this->nextPage->data;
+            this->dataPtr = this->nextPage->data();
             this->nextPage = this->nextPage->nextPage;
           }
           else {
@@ -328,6 +257,130 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
           return *this;
         }
     };
+};
+
+class DynamicPageLoader : public page::Loader {
+  private:
+    const uint32_t prefixSize;
+
+    inline size_t findBlock(const uint8_t searchChar, size_t prefixPos, size_t size, std::pair<uint64_t, std::string>* values, bool& endOfString) {
+      size_t start = 0;
+      size_t end = size-1;
+
+      size_t biggestFound = start;
+
+      while (start < end) {
+        size_t middle = (end+start)/2;
+
+        if (values[middle].second[prefixPos] == searchChar) {
+          assert(middle >= biggestFound);
+          biggestFound = middle;
+          start = middle+1;
+        }
+        else {
+          if (values[middle].second[prefixPos] == '\0') {
+            endOfString = true;
+          }
+          end = middle;
+        }
+      }
+
+      if (values[start].second[prefixPos] != searchChar) {
+        return biggestFound;
+      }
+
+      return start;
+    }
+
+    uint64_t getPageSize(uint64_t size, std::pair<page::IdType, std::string>* values) {
+      using namespace page;
+
+      uint64_t pageSize = sizeof(uint64_t); // next page pointer
+      pageSize += sizeof(HeaderType) + sizeof(IdType) + sizeof(StringSizeType) + values[0].second.size(); // Uncompressed value
+
+      pageSize += (size-1)*(sizeof(HeaderType)+sizeof(IdType)+sizeof(PrefixSizeType)+sizeof(StringSizeType)); // Delta headers + IDs
+      // Deltas
+      for (uint64_t i = 1; i < size; i++) {
+        uint64_t prefixSize;
+        std::string deltaValue = this->delta(values[0].second, values[i].second, prefixSize);
+        pageSize += deltaValue.size();
+      }
+
+      return pageSize + sizeof(HeaderType); // End of page header
+    }
+
+    DynamicPage* createPage(uint64_t size, std::pair<uint64_t, std::string>* values, std::function<void(DynamicPage*, uint64_t, std::string)> callback) {
+      assert(size > 0);
+
+      uint64_t pageSize = getPageSize(size, values);
+
+      char* dataPtr = new char[pageSize];
+      callback(reinterpret_cast<DynamicPage*>(dataPtr), values[0].first, values[0].second);
+      char* originalPointer = dataPtr;
+
+      // Write header
+      page::write<uint64_t>(dataPtr, 0L); // "next page" pointer placeholder
+      startPrefix(dataPtr);
+
+      // Write uncompressed string
+      this->writeId(dataPtr, values[0].first);
+      this->writeValue(dataPtr, values[0].second);
+
+      // Write deltas
+      for (uint64_t i = 1; i < size; i++) {
+        this->startDelta(dataPtr);
+        uint64_t prefixSize;
+        std::string deltaValue = this->delta(values[0].second, values[i].second, prefixSize);
+        this->writeId(dataPtr, values[i].first);
+        this->writeDelta(dataPtr, deltaValue, prefixSize);
+        callback(reinterpret_cast<DynamicPage*>(originalPointer), values[i].first, values[i].second);
+      }
+
+      endPage(dataPtr);
+
+      return reinterpret_cast<DynamicPage*>(originalPointer);
+    }
+
+  public:
+    DynamicPageLoader(uint32_t size) : prefixSize(size) {
+    }
+
+    DynamicPageLoader() : DynamicPageLoader(1) {
+    }
+
+    void load(std::vector<std::pair<uint64_t, std::string>> values, std::function<void(DynamicPage*, uint64_t, std::string)> callback) {
+      using namespace std;
+
+      const size_t size = values.size();
+
+      size_t start = 0;
+      size_t end;
+      uint32_t searchPos;
+      DynamicPage* lastPage = nullptr;
+
+      do {
+        bool endOfString = false;
+        end = size-1;
+        for (searchPos = 0; searchPos < prefixSize && !endOfString; searchPos++) {
+          const uint8_t searchChar = static_cast<uint8_t>(values[start].second[searchPos]);
+          if (searchChar == '\0') {
+            break;
+          }
+          end = start+findBlock(searchChar, searchPos, end-start+1, &values[start], endOfString);
+        }
+        cout << "Block [" << start << "," << end << "] on position " << searchPos-1 << endl;
+
+        DynamicPage* currentPage = createPage(end-start+1, &values[start], callback);
+
+        if (lastPage != nullptr) {
+          lastPage->nextPage = currentPage;
+        }
+        lastPage = currentPage;
+
+        start = (start == end) ? start+1 : end+1;
+      }
+      while(end < size-1);
+    }
 };
 
 #endif

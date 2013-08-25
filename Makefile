@@ -35,8 +35,6 @@ endif
 DBGFLAGS := -O0 -DDEBUG
 RELFLAGS := -O3
 
-LDFLAGS = -ltcmalloc
-
 # Configuration variables
 OBJ_DIR := obj
 EXE_DIR := bin
