@@ -132,7 +132,6 @@ class DynamicPage {
               }
               end = start+findBlock(searchChar, searchPos, end-start+1, &values[start], endOfString);
             }
-            cout << "Block [" << start << "," << end << "] on position " << searchPos-1 << endl;
 
             DynamicPage* currentPage = createPage(end-start+1, &values[start], callback);
 

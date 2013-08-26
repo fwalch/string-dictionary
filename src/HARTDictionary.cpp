@@ -16,7 +16,6 @@ bool ART::lookup(uint64_t key, uint64_t& value) {
 
   Node* leaf = lookupValue(tree, swappedKey, sizeof(uint64_t), 0);
   if (leaf == nullNode) {
-    cout << "Leaf not found (ART) " << endl;
     return false;
   }
   assert(isLeaf(leaf));

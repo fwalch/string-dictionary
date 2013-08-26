@@ -40,7 +40,7 @@ class HARTDictionary : public Dictionary {
   private:
     ART index; // ID -> string
     hattrie_t* reverseIndex; // string -> ID
-    typedef DynamicPage<> PageType;
+    typedef DynamicPage<32> PageType;
 
     uint64_t encodeLeaf(PageType* page, uint16_t deltaNumber);
     PageType::Iterator decodeLeaf(uint64_t leafValue);

@@ -5,7 +5,6 @@
 #include <string>
 #include <cstring>
 #include <cassert>
-#include <iostream>
 #include <vector>
 #include <functional>
 
@@ -82,7 +81,6 @@ namespace page {
         }
 
         auto delta = value.substr(pos, value.size()-pos);
-        std::cout << "Delta between " << ref << " & " << value << ":" << delta << std::endl;
         return delta;
       }
 
@@ -130,11 +128,9 @@ namespace page {
 
     public:
       const page::Leaf operator*() {
-        std::cout << "Dereferencing iterator" << std::endl;
         char* readPtr = this->dataPtr;
         page::Header header = page::readHeader(readPtr);
         if (header == page::Header::StartOfPrefix) {
-          std::cout << "Read full string" << std::endl;
           uint64_t id = page::read<uint64_t>(readPtr);
           uint64_t size = page::read<uint64_t>(readPtr);
           const char* value = page::readString(readPtr, size);
@@ -147,7 +143,6 @@ namespace page {
         }
         else {
           assert(header == page::Header::StartOfDelta);
-          std::cout << "Read delta" << std::endl;
 
           uint64_t id = page::read<uint64_t>(readPtr);
           uint64_t prefixSize = page::read<uint64_t>(readPtr);
@@ -169,7 +164,6 @@ namespace page {
       }
 
       Iterator& operator++() {
-        std::cout << "Increasing iterator" << std::endl;
         page::Header header = page::readHeader(this->dataPtr);
         if (header == page::Header::StartOfPrefix) {
           page::advance<uint64_t>(this->dataPtr);
@@ -186,22 +180,18 @@ namespace page {
         char* readPtr = this->dataPtr;
         header = page::readHeader(readPtr);
         if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
-          std::cout << "Advance inside page" << std::endl;
         }
         else if (header == page::Header::EndOfPage && this->nextPage != nullptr) {
-          std::cout << "Advance to next page" << std::endl;
           this->dataPtr = this->nextPage->getData();
           this->nextPage = this->nextPage->nextPage;
         }
         else {
-          std::cout << "Set dataPtr to null" << std::endl;
           this->dataPtr = nullptr;
         }
         return *(reinterpret_cast<TIterator*>(this));
       }
 
       operator bool() {
-        std::cout << "Checking condition" << std::endl;
         if (this->dataPtr == nullptr) {
           return false;
         }
@@ -238,10 +228,8 @@ namespace page {
           readPtr = this->dataPtr;
           header = page::readHeader(readPtr);
           if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
-            std::cout << "Advance inside page" << std::endl;
           }
           else {
-            std::cout << "Set this->dataPtr to null" << std::endl;
             this->dataPtr = nullptr;
           }
         }
@@ -266,7 +254,6 @@ namespace page {
             while(pos < size && pos < searchValue.size() && searchValue[pos] == value[pos]) {
               pos++;
             }
-            std::cout << "Find String search pos: " << pos << std::endl;
             if (pos == size) {
               // string found; return
               return *(reinterpret_cast<TIterator*>(this));
@@ -309,10 +296,8 @@ namespace page {
           readPtr = this->dataPtr;
           header = page::readHeader(readPtr);
           if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
-            std::cout << "Advance inside page" << std::endl;
           }
           else {
-            std::cout << "Set this->dataPtr to null" << std::endl;
             this->dataPtr = nullptr;
           }
         }
@@ -346,10 +331,8 @@ namespace page {
         char* readPtr = this->dataPtr;
         page::Header header = page::readHeader(readPtr);
         if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
-          std::cout << "Advance inside page" << std::endl;
         }
         else {
-          std::cout << "Set this->dataPtr to null" << std::endl;
           this->dataPtr = nullptr;
         }
 

@@ -68,7 +68,6 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
 
             if (currentPage == nullptr) {
               // Create new page
-              std::cout << "Create page" << std::endl;
               currentPage = new MultiUncompressedPage<TSize, TFrequency>();
               if (lastPage != nullptr) {
                 lastPage->nextPage = currentPage;

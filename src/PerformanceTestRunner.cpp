@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define BULK_LOAD_RATIO 1.0
+#define BULK_LOAD_RATIO 0.8
 
 inline bool hasDictionary(char counter);
 inline Dictionary* getDictionary(char counter);
@@ -99,10 +99,10 @@ void PerformanceTestRunner::run(istream& tupleStream) {
       bulkLoad(dict, bulkLoadValues);
       cout << " Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Inserting " << numberOfOperations << " values." << endl;
-      start = clock();
+      cout << "[SKIPPED] Inserting " << numberOfOperations << " values." << endl;
+      /*start = clock();
       insert(dict, insertValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << " Finished in " << diff(start) << " sec." << endl;*/
       cout << "Memory usage: " << getMemoryUsage() - baseMemory << "." << endl;
 
       cout << "Looking up " << numberOfOperations << " strings by ID." << endl;

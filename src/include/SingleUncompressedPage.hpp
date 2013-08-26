@@ -55,7 +55,6 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
 
             if (currentPage == nullptr) {
               // Create new page
-              std::cout << "Create page" << std::endl;
               currentPage = new SingleUncompressedPage<TSize>();
               if (lastPage != nullptr) {
                 lastPage->nextPage = currentPage;
@@ -67,7 +66,6 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
               deltaRef = &pair.second;
 
               if (dataPtr + pageHeaderSize + pair.second.size() > endOfPage) {
-                std::cout << "Cannot write one uncompressed string to the page" << std::endl;
                 assert(false);
               }
 
