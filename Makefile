@@ -25,7 +25,7 @@ endif
 
 # Define gcc flags
 ifeq ($(CXX),g++)
-	CXXFLAGS = -g -Wall -Wextra -Werror -Wno-type-limits --std=c++11
+	CXXFLAGS = -g -Wall -Wextra -Werror -Wno-type-limits -Wno-maybe-uninitialized -Wno-strict-aliasing --std=c++11
 endif
 ifeq ($(CC),gcc)
 	CFLAGS = -g -Wall -Wextra -Werror --std=c99

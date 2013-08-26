@@ -28,8 +28,8 @@ class HashARTDictionary : public Dictionary {
     bool lookup(std::string value, uint64_t& id);
     bool lookup(uint64_t id, std::string& value);
 
-    const char* name() const {
-      return "HashARTDictionary";
+    std::string name() const {
+      return "ART/Hash";
     }
 };
 

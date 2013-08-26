@@ -68,7 +68,7 @@ class Dictionary {
      * Returns a human-readable name for the specific dictionary implementation.
      * @returns Human-readable name of the dictionary
      */
-    virtual const char* name() const = 0;
+    virtual std::string name() const = 0;
 };
 
 #endif

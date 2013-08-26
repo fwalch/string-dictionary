@@ -28,6 +28,10 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
       return Iterator(this).gotoDelta(delta);
     }
 
+    static std::string name() {
+      return "a single uncompressed string per page";
+    }
+
     class Loader : public page::Loader<SingleUncompressedPage<TSize>> {
       public:
         void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<SingleUncompressedPage<TSize>>::CallbackType const &callback) {

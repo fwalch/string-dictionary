@@ -29,6 +29,9 @@ class DynamicPage {
       return Iterator(this).gotoDelta(delta);
     }
 
+    static std::string name() {
+      return "dynamic pages (prefix size " + std::to_string(TPrefixSize) + ")";
+    }
 
     class Loader : public page::Loader<DynamicPage<TPrefixSize>> {
       private:
@@ -64,7 +67,7 @@ class DynamicPage {
         uint64_t getPageSize(uint64_t size, std::pair<page::IdType, std::string>* values) {
           using namespace page;
 
-          uint64_t pageSize = sizeof(DynamicPage*); // next page pointer
+          uint64_t pageSize = sizeof(uintptr_t); // next page pointer
           pageSize += sizeof(HeaderType) + sizeof(IdType) + sizeof(StringSizeType) + values[0].second.size(); // Uncompressed value
 
           pageSize += (size-1)*(sizeof(HeaderType)+sizeof(IdType)+sizeof(PrefixSizeType)+sizeof(StringSizeType)); // Delta headers + IDs
@@ -89,7 +92,7 @@ class DynamicPage {
           char* originalPointer = dataPtr;
 
           // Write header
-          page::write<DynamicPage*>(dataPtr, 0L); // "next page" pointer placeholder
+          page::write<uintptr_t>(dataPtr, 0L); // "next page" pointer placeholder
           this->startPrefix(dataPtr);
 
           // Write uncompressed string

@@ -15,7 +15,7 @@ using namespace std;
 */
 
 TEST(HARTDictionary, BulkInsert) {
-  HARTDictionary dict;
+  HARTDictionary<> dict;
   std::string values[] = {
     "aa",
     "ab",
@@ -29,16 +29,12 @@ TEST(HARTDictionary, BulkInsert) {
 
   for (size_t i = 0; i < 4; i++) {
     uint64_t id;
-    cout << ">>> Testing for " << values[i] << endl;
     ASSERT_TRUE(dict.lookup(values[i], id));
-    cout << ">>> Test success" << endl;
     ASSERT_EQ(i, id);
 
     string value;
-    cout << ">>> Testing for " << id << endl;
     ASSERT_TRUE(dict.lookup(id, value));
     ASSERT_EQ(values[i], value);
-    cout << ">>> Test success" << endl;
   }
 }
 

@@ -6,7 +6,7 @@
 /**
  * Fixed-size page implementation that holds multiple uncompressed strings per page.
  */
-template<uint64_t TSize, uint8_t TFrequency>
+template<uint64_t TSize, uint16_t TFrequency>
 class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TFrequency>> {
   public:
     class Iterator;
@@ -23,6 +23,14 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
 
     Iterator getString(const std::string& str) {
       return Iterator(this).find(str);
+    }
+
+    Iterator get(uint16_t deltaValue) {
+      return Iterator(this).gotoDelta(deltaValue);
+    }
+
+    static std::string name() {
+      return " pages of size " + std::to_string(TSize) + " and each " + std::to_string(TFrequency).append("th string uncompressed.");
     }
 
     class Iterator : public page::Iterator<MultiUncompressedPage<TSize, TFrequency>, Iterator> {
@@ -106,5 +114,8 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
         }
     };
 };
+
+template<uint64_t TSize>
+using SingleUncompressedPage = MultiUncompressedPage<TSize, std::numeric_limits<uint16_t>::max()>;
 
 #endif

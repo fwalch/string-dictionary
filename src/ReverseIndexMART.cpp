@@ -848,7 +848,7 @@ void ReverseIndexMART::bulkInsert(size_t size, string* values) {
   uint32_t searchPos;
   tree = createRootNode(size, values, searchPos);
   bulkInsertRec(size, values, searchPos, tree);
-  tree->print(0);
+  //tree->print(0);
 }
 
 bool ReverseIndexMART::lookup(std::string key, uint64_t& value) {

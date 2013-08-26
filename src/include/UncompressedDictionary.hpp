@@ -26,8 +26,8 @@ class UncompressedDictionary : public Dictionary {
     bool lookup(std::string value, uint64_t& id);
     bool lookup(uint64_t id, std::string& value);
 
-    const char* name() const {
-      return "UncompressedDictionary";
+    std::string name() const {
+      return "Hash/Hash (uncompressed)";
     }
 };
 

@@ -343,7 +343,6 @@ namespace page {
         return *(reinterpret_cast<TIterator*>(this));
       }
   };
-
 }
 
 template<uint64_t TSize, class TPage>

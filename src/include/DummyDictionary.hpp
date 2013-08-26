@@ -16,7 +16,7 @@ class DummyDictionary : public Dictionary {
     bool lookup(std::string value, uint64_t& id);
     bool lookup(uint64_t id, std::string& value);
 
-    const char* name() const {
+    std::string name() const {
       return "DummyDictionary";
     }
 };

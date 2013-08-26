@@ -1,6 +1,5 @@
 #include "gtest/gtest.h"
 #include "MultiUncompressedPage.hpp"
-#include "SingleUncompressedPage.hpp"
 #include "DynamicPage.hpp"
 #include <vector>
 
@@ -36,7 +35,6 @@ TEST(MultipleUncompressedStringsPerPage, Create) {
   uint64_t i = 0;
   for (auto iterator = pages.front()->getId(0); iterator; ++iterator) {
     auto leaf = *iterator;
-    cout << leaf.id << " " << leaf.value << endl;
     ASSERT_EQ(insertValues[i].first, leaf.id);
     ASSERT_EQ(insertValues[i].second, leaf.value);
     i++;
@@ -74,7 +72,6 @@ TEST(SingleUncompressedStringPerPage, Create) {
   uint64_t i = 0;
   for (auto iterator = pages.front()->getId(0); iterator; ++iterator) {
     auto leaf = *iterator;
-    cout << leaf.id << " " << leaf.value << endl;
     ASSERT_EQ(insertValues[i].first, leaf.id);
     ASSERT_EQ(insertValues[i].second, leaf.value);
     i++;
@@ -114,7 +111,6 @@ TEST(DynamicPage, Create) {
   uint64_t i = 0;
   for (auto iterator = firstPage->getId(0); iterator; ++iterator) {
     auto leaf = *iterator;
-    cout << leaf.id << " " << leaf.value << endl;
     ASSERT_EQ(insertValues[i].first, leaf.id);
     ASSERT_EQ(insertValues[i].second, leaf.value);
     i++;

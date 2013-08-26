@@ -135,12 +135,12 @@ void PerformanceTestRunner::run(istream& tupleStream) {
       lookup(dict, neLookupValues);
       cout << " Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Updating " << numberOfOperations << " strings." << endl;
-      start = clock();
+      cout << "[SKIPPED] Updating " << numberOfOperations << " strings." << endl;
+      /*start = clock();
       update(dict, updateIDs, updateValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << " Finished in " << diff(start) << " sec." << endl;*/
 
-      cout << endl;
+      cout << "Finished run for " << dict->name() << endl;
 
       delete dict;
 
@@ -153,13 +153,23 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 }
 
 inline bool hasDictionary(char counter) {
-  return counter < 1;
+  return counter < 6;
 }
 
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
     case 0:
-      return new HARTDictionary();
+      return new HARTDictionary<DynamicPage<1>>();
+    case 1:
+      return new HARTDictionary<DynamicPage<48>>();
+    case 2:
+      return new HARTDictionary<DynamicPage<52>>();
+    case 3:
+      return new HARTDictionary<DynamicPage<56>>();
+    case 4:
+      return new HARTDictionary<DynamicPage<60>>();
+    case 5:
+      return new HARTDictionary<DynamicPage<64>>();
   }
   assert(false);
   return nullptr;
@@ -192,7 +202,7 @@ class PerfTestDictionary : public Dictionary {
     }
 #pragma GCC diagnostic pop
 
-    const char* name() const {
+    std::string name() const {
       return "PerformanceTestDictionary";
     }
 };
