@@ -8,7 +8,7 @@ test_sources = UncompressedDictionaryTests.cpp SimpleDictionaryTests.cpp \
 test_executables = test
 test_dependencies = src
 test_libraries = gmock gtest
-test_cxxflags = -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-weak-vtables
+test_cxxflags = -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-weak-vtables -Wno-unused-parameter -Wno-unused-variable
 
 test: compile-test
 	$(EXE_DIR)/test

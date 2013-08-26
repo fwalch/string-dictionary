@@ -56,7 +56,7 @@ uint64_t HARTDictionary::encodeLeaf(PageType* page, uint16_t deltaNumber) {
   return leafValue;
 }
 
-void HARTDictionary::insertLeaf(PageType* page, uint16_t deltaNumber, std::string value, uint64_t id) {
+void HARTDictionary::insertLeaf(PageType* page, uint16_t deltaNumber, page::IdType id, std::string value) {
   uint64_t leafValue = encodeLeaf(page, deltaNumber);
 
   bool inserted = false;

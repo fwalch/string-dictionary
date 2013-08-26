@@ -17,7 +17,7 @@ endif
 
 # Define clang flags
 ifeq ($(CXX),clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-padded -Wno-vla -Wno-documentation -Wno-shadow --std=c++11 -Wno-unused-parameter -Wno-unused-variable
+	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-padded -Wno-documentation --std=c++11
 endif
 ifeq ($(CC),clang)
 	CFLAGS = -g -Weverything -Werror --std=c99
@@ -40,9 +40,9 @@ OBJ_DIR := obj
 EXE_DIR := bin
 
 CHECKDIR  = mkdir -p $$(dir $$@)
-BUILDCXX  = $(CXX) -c $(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
-BUILDCC   = $(CC) -c $(CFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
-BUILDEXE  = $(CXX) $(LDFLAGS) $$^ -o $$@
+BUILDCXX  = $(CXX) -c $$(CXXFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
+BUILDCC   = $(CC) -c $$(CFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
+BUILDEXE  = $(CXX) $$(LDFLAGS) $$^ -o $$@
 
 # Default build type
 BUILD = REL

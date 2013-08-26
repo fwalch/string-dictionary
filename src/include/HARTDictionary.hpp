@@ -1,11 +1,13 @@
 #ifndef H_HARTDictionary
 #define H_HARTDictionary
 
+#include <cassert>
 #include "AdaptiveRadixTree.hpp"
 #include "hat-trie.h"
 #include "Dictionary.hpp"
-#include <cassert>
 #include "SingleUncompressedPage.hpp"
+#include "MultiUncompressedPage.hpp"
+#include "DynamicPage.hpp"
 
 class HARTDictionary;
 
@@ -38,11 +40,11 @@ class HARTDictionary : public Dictionary {
   private:
     ART index; // ID -> string
     hattrie_t* reverseIndex; // string -> ID
-    typedef SingleUncompressedPage<512> PageType;
+    typedef DynamicPage<> PageType;
 
     uint64_t encodeLeaf(PageType* page, uint16_t deltaNumber);
     PageType::Iterator decodeLeaf(uint64_t leafValue);
-    void insertLeaf(PageType* page, uint16_t deltaNumber, std::string value, uint64_t id);
+    void insertLeaf(PageType* page, uint16_t deltaNumber, page::IdType id, std::string value);
 
   public:
     HARTDictionary();

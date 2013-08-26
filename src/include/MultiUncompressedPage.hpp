@@ -25,117 +25,20 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
       return Iterator(this).find(str);
     }
 
-    class Iterator : public Page<TSize, MultiUncompressedPage<TSize, TFrequency>>::Iterator {
+    class Iterator : public page::Iterator<MultiUncompressedPage<TSize, TFrequency>, Iterator> {
       public:
-        Iterator(MultiUncompressedPage<TSize, TFrequency>* pagePtr) : Page<TSize, MultiUncompressedPage<TSize, TFrequency>>::Iterator(pagePtr) {
-        }
-
-        const page::Leaf operator*() {
-          std::cout << "Dereferencing iterator" << std::endl;
-          char* readPtr = this->dataPtr;
-          page::Header header = page::readHeader(readPtr);
-          if (header == page::Header::StartOfPrefix) {
-            std::cout << "Read full string" << std::endl;
-            uint64_t id = page::read<uint64_t>(readPtr);
-            uint64_t size = page::read<uint64_t>(readPtr);
-            const char* value = page::readString(readPtr, size);
-            this->fullString = std::string(value, value+size);
-
-            return page::Leaf {
-              id,
-              this->fullString
-            };
-          }
-          else {
-            assert(header == page::Header::StartOfDelta);
-            std::cout << "Read delta" << std::endl;
-
-            uint64_t id = page::read<uint64_t>(readPtr);
-            uint64_t prefixSize = page::read<uint64_t>(readPtr);
-            uint64_t size = page::read<uint64_t>(readPtr);
-            const char* value = page::readString(readPtr, size);
-
-            std::string output;
-            output.reserve(prefixSize + size +1);
-            //TODO: not efficient
-            output.insert(0, this->fullString.substr(0, prefixSize));
-            output.insert(prefixSize, value, size);
-            output[prefixSize+size] = '\0';
-
-            return page::Leaf {
-              id,
-              output
-            };
-          }
-        }
-
-        Iterator& operator++() {
-          std::cout << "Increasing iterator" << std::endl;
-          page::Header header = page::readHeader(this->dataPtr);
-          if (header == page::Header::StartOfPrefix) {
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
-            page::advance(this->dataPtr, size);
-          }
-          else if (header == page::Header::StartOfDelta) {
-            page::advance<uint64_t>(this->dataPtr);
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
-            page::advance(this->dataPtr, size);
-          }
-
-          char* readPtr = this->dataPtr;
-          header = page::readHeader(readPtr);
-          if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
-            std::cout << "Advance inside page" << std::endl;
-          }
-          else if (header == page::Header::EndOfPage && this->nextPage != nullptr) {
-            std::cout << "Advance to next page" << std::endl;
-            this->dataPtr = this->nextPage->data;
-            this->nextPage = this->nextPage->nextPage;
-          }
-          else {
-            std::cout << "Set dataPtr to null" << std::endl;
-            this->dataPtr = nullptr;
-          }
-          return *this;
-        }
-
-        operator bool() {
-          std::cout << "Checking condition" << std::endl;
-          if (this->dataPtr == nullptr) {
-            return false;
-          }
-          char* readPtr = this->dataPtr;
-          page::Header header = page::readHeader(readPtr);
-          return (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta)
-            || (header == page::Header::EndOfPage && this->nextPage != nullptr);
-        }
-
-        Iterator& find(uint64_t id) {
-          //TODO
-          return *this;
-        }
-
-        Iterator& find(const std::string& value) {
-          //TODO
-          return *this;
-        }
-
-        Iterator& gotoDelta(uint16_t delta) {
-          //TODO
-          return *this;
+        Iterator(MultiUncompressedPage<TSize, TFrequency>* pagePtr) : page::Iterator<MultiUncompressedPage<TSize, TFrequency>, Iterator>(pagePtr) {
         }
     };
 
-    class Loader : public page::Loader {
+    class Loader : public page::Loader<MultiUncompressedPage<TSize, TFrequency>> {
       public:
-        typedef std::function<void(MultiUncompressedPage<TSize, TFrequency>*, std::string, uint64_t)> CallbackType;
-        void load(std::vector<std::pair<uint64_t, std::string>> values, CallbackType const &callback) {
+        void load(std::vector<std::pair<uint64_t, std::string>> values, typename page::Loader<MultiUncompressedPage<TSize, TFrequency>>::CallbackType const &callback) {
           MultiUncompressedPage<TSize, TFrequency>* currentPage = nullptr;
           MultiUncompressedPage<TSize, TFrequency>* lastPage = nullptr;
           const char* endOfPage = nullptr;
           char* dataPtr = nullptr;
+          uint16_t deltaNumber = 0;
           const uint64_t prefixHeaderSize = sizeof(uint8_t) + 2*sizeof(uint64_t);
           const uint64_t deltaHeaderSize = sizeof(uint8_t) + 3*sizeof(uint64_t);
 
@@ -172,8 +75,9 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
               }
               dataPtr = currentPage->data;
               endOfPage = currentPage->data + currentPage->size - sizeof(uint8_t);
+              deltaNumber = 0;
 
-              callback(currentPage, pair.second, pair.first);
+              callback(currentPage, deltaNumber++, pair.first, pair.second);
 
               i = 0;
             }
@@ -193,7 +97,7 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
               this->writeId(dataPtr, pair.first);
               this->writeDelta(dataPtr, deltaValue, prefixSize);
 
-              callback(currentPage, pair.second, pair.first);
+              callback(currentPage, deltaNumber++, pair.first, pair.second);
             }
 
             i++;

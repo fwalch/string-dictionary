@@ -127,13 +127,13 @@ uint8_t* ReverseIndexMART::Node4::prefix() {
   return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node4)]);
 }
 
-void ReverseIndexMART::Node4::insert(uint8_t keyByte, Node* child) {
+void ReverseIndexMART::Node4::insert(uint8_t keyByte, Node* node) {
   unsigned pos;
   for (pos=0;(pos<this->count)&&(this->key[pos]<keyByte);pos++);
   memmove(this->key+pos+1,this->key+pos,this->count-pos);
   memmove(this->child+pos+1,this->child+pos,(this->count-pos)*sizeof(uintptr_t));
   this->key[pos]=keyByte;
-  this->child[pos]=child;
+  this->child[pos]=node;
   this->count++;
 }
 
@@ -168,7 +168,7 @@ uint8_t* ReverseIndexMART::Node16::prefix() {
   return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node16)]);
 }
 
-void ReverseIndexMART::Node16::insert(uint8_t keyByte, Node* child) {
+void ReverseIndexMART::Node16::insert(uint8_t keyByte, Node* node) {
   uint8_t keyByteFlipped=flipSign(keyByte);
   __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(static_cast<char>(keyByteFlipped)),_mm_loadu_si128(reinterpret_cast<__m128i*>(this->key)));
   uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-this->count));
@@ -176,7 +176,7 @@ void ReverseIndexMART::Node16::insert(uint8_t keyByte, Node* child) {
   memmove(this->key+pos+1,this->key+pos,this->count-pos);
   memmove(this->child+pos+1,this->child+pos,(this->count-pos)*sizeof(uintptr_t));
   this->key[pos]=keyByteFlipped;
-  this->child[pos]=child;
+  this->child[pos]=node;
   this->count++;
 }
 
@@ -216,11 +216,11 @@ uint8_t* ReverseIndexMART::Node48::prefix() {
   return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node48)]);
 }
 
-void ReverseIndexMART::Node48::insert(uint8_t keyByte, Node* child) {
+void ReverseIndexMART::Node48::insert(uint8_t keyByte, Node* node) {
   unsigned pos=this->count;
   if (this->child[pos])
     for (pos=0;this->child[pos]!=NULL;pos++);
-  this->child[pos]=child;
+  this->child[pos]=node;
   this->childIndex[keyByte]=static_cast<uint8_t>(pos);
   this->count++;
 }
@@ -255,10 +255,10 @@ uint8_t* ReverseIndexMART::Node256::prefix() {
   return &(reinterpret_cast<uint8_t*>(this)[sizeof(Node256)]);
 }
 
-void ReverseIndexMART::Node256::insert(uint8_t keyByte, Node* child) {
+void ReverseIndexMART::Node256::insert(uint8_t keyByte, Node* node) {
   // Insert leaf into inner node
   this->count++;
-  this->child[keyByte]=child;
+  this->child[keyByte]=node;
 }
 
 ReverseIndexMART::Node4* ReverseIndexMART::createNode4(uint32_t prefixLength) {

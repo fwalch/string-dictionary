@@ -29,7 +29,7 @@ TEST(MultipleUncompressedStringsPerPage, Create) {
 
   std::vector<pageType*> pages;
   pageType::Loader loader;
-  loader.load(insertValues, [&pages](pageType* page, std::string value, uint64_t id) {
+  loader.load(insertValues, [&pages](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
       pages.push_back(page);
   });
 
@@ -67,7 +67,7 @@ TEST(SingleUncompressedStringPerPage, Create) {
 
   std::vector<pageType*> pages;
   pageType::Loader loader;
-  loader.load(insertValues, [&pages](pageType* page, uint16_t delta, std::string value, uint64_t id) {
+  loader.load(insertValues, [&pages](pageType* page, uint16_t delta, uint64_t id, std::string value) {
       pages.push_back(page);
   });
 
@@ -101,10 +101,11 @@ TEST(DynamicPage, Create) {
     insertValues.push_back(make_pair(nextId++, values[i]));
   }
 
-  DynamicPage* firstPage = nullptr;
+  typedef DynamicPage<> pageType;
+  pageType* firstPage = nullptr;
 
-  DynamicPageLoader loader(5);
-  loader.load(insertValues, [&firstPage](DynamicPage* page, uint64_t id, std::string value) {
+  pageType::Loader loader;
+  loader.load(insertValues, [&firstPage](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
     if (firstPage == nullptr) {
       firstPage = page;
     }

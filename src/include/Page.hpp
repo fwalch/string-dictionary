@@ -70,7 +70,10 @@ namespace page {
     std::string value;
   };
 
+  template<class TPage>
   class Loader {
+    public:
+      typedef std::function<void(TPage*, uint16_t, IdType, std::string)> CallbackType;
     protected:
       inline std::string delta(const std::string& ref, const std::string& value, uint64_t& pos) {
         pos = 0;
@@ -111,31 +114,265 @@ namespace page {
         writeValue(dataPtr, delta);
       }
   };
+
+  template<class TPage, class TIterator>
+  class Iterator {
+    protected:
+      char* dataPtr;
+      TPage* nextPage;
+      std::string fullString;
+
+      Iterator(char* data, TPage* next) : dataPtr(data), nextPage(next) {
+      }
+
+      Iterator(TPage* pagePtr) : Iterator(pagePtr->data, pagePtr->nextPage) {
+      }
+
+    public:
+      const page::Leaf operator*() {
+        std::cout << "Dereferencing iterator" << std::endl;
+        char* readPtr = this->dataPtr;
+        page::Header header = page::readHeader(readPtr);
+        if (header == page::Header::StartOfPrefix) {
+          std::cout << "Read full string" << std::endl;
+          uint64_t id = page::read<uint64_t>(readPtr);
+          uint64_t size = page::read<uint64_t>(readPtr);
+          const char* value = page::readString(readPtr, size);
+          this->fullString = std::string(value, value+size);
+
+          return page::Leaf {
+            id,
+              this->fullString
+          };
+        }
+        else {
+          assert(header == page::Header::StartOfDelta);
+          std::cout << "Read delta" << std::endl;
+
+          uint64_t id = page::read<uint64_t>(readPtr);
+          uint64_t prefixSize = page::read<uint64_t>(readPtr);
+          uint64_t size = page::read<uint64_t>(readPtr);
+          const char* value = page::readString(readPtr, size);
+
+          std::string output;
+          output.reserve(prefixSize + size +1);
+          //TODO: not efficient
+          output.insert(0, this->fullString.substr(0, prefixSize));
+          output.insert(prefixSize, value, size);
+          output[prefixSize+size] = '\0';
+
+          return page::Leaf {
+            id,
+              output
+          };
+        }
+      }
+
+      Iterator& operator++() {
+        std::cout << "Increasing iterator" << std::endl;
+        page::Header header = page::readHeader(this->dataPtr);
+        if (header == page::Header::StartOfPrefix) {
+          page::advance<uint64_t>(this->dataPtr);
+          uint64_t size = page::read<uint64_t>(this->dataPtr);
+          page::advance(this->dataPtr, size);
+        }
+        else if (header == page::Header::StartOfDelta) {
+          page::advance<uint64_t>(this->dataPtr);
+          page::advance<uint64_t>(this->dataPtr);
+          uint64_t size = page::read<uint64_t>(this->dataPtr);
+          page::advance(this->dataPtr, size);
+        }
+
+        char* readPtr = this->dataPtr;
+        header = page::readHeader(readPtr);
+        if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+          std::cout << "Advance inside page" << std::endl;
+        }
+        else if (header == page::Header::EndOfPage && this->nextPage != nullptr) {
+          std::cout << "Advance to next page" << std::endl;
+          this->dataPtr = this->nextPage->getData();
+          this->nextPage = this->nextPage->nextPage;
+        }
+        else {
+          std::cout << "Set dataPtr to null" << std::endl;
+          this->dataPtr = nullptr;
+        }
+        return *(reinterpret_cast<TIterator*>(this));
+      }
+
+      operator bool() {
+        std::cout << "Checking condition" << std::endl;
+        if (this->dataPtr == nullptr) {
+          return false;
+        }
+        char* readPtr = this->dataPtr;
+        page::Header header = page::readHeader(readPtr);
+        return (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta)
+          || (header == page::Header::EndOfPage && this->nextPage != nullptr);
+      }
+
+      TIterator& find(uint64_t id) {
+        do {
+          char* readPtr = this->dataPtr;
+          page::readHeader(readPtr);
+          uint64_t foundId = page::read<uint64_t>(readPtr);
+          if (id == foundId) {
+            return *(reinterpret_cast<TIterator*>(this));
+          }
+
+          page::Header header = page::readHeader(this->dataPtr);
+          // Not found; skip according to header
+          if (header == page::Header::StartOfPrefix) {
+            page::advance<uint64_t>(this->dataPtr);
+            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            const char* value = page::readString(this->dataPtr, size);
+            this->fullString = std::string(value, value+size);
+          }
+          else if (header == page::Header::StartOfDelta) {
+            page::advance<uint64_t>(this->dataPtr);
+            page::advance<uint64_t>(this->dataPtr);
+            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance(this->dataPtr, size);
+          }
+
+          readPtr = this->dataPtr;
+          header = page::readHeader(readPtr);
+          if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+            std::cout << "Advance inside page" << std::endl;
+          }
+          else {
+            std::cout << "Set this->dataPtr to null" << std::endl;
+            this->dataPtr = nullptr;
+          }
+        }
+        while (this->dataPtr != nullptr);
+
+        return *(reinterpret_cast<TIterator*>(this));
+      }
+
+      TIterator& find(const std::string& searchValue) {
+        uint64_t pos = 0;
+        do {
+          char* readPtr = this->dataPtr;
+          page::Header header = page::readHeader(readPtr);
+          page::read<uint64_t>(readPtr);
+
+          if (header == page::Header::StartOfPrefix) {
+            // String is stored uncompressed
+            uint64_t size = page::read<uint64_t>(readPtr);
+            const char* value = page::readString(readPtr, size);
+
+            assert(pos == 0);
+            while(pos < size && pos < searchValue.size() && searchValue[pos] == value[pos]) {
+              pos++;
+            }
+            std::cout << "Find String search pos: " << pos << std::endl;
+            if (pos == size) {
+              // string found; return
+              return *(reinterpret_cast<TIterator*>(this));
+            }
+            this->fullString = std::string(value, value+size);
+          }
+          else if (header == page::Header::StartOfDelta) {
+            uint64_t prefixSize = page::read<uint64_t>(readPtr);
+            uint64_t size = page::read<uint64_t>(readPtr);
+            if (prefixSize == pos && prefixSize + size == searchValue.size()) {
+              // Possible match; compare characters
+              const char* value = page::readString(readPtr, size);
+
+              uint64_t searchPos = 0;
+              while(searchPos+pos < searchValue.size() && searchValue[pos+searchPos] == value[searchPos]) {
+                searchPos++;
+              }
+
+              if (searchPos+pos == searchValue.size()) {
+                // string found; return
+                return *(reinterpret_cast<TIterator*>(this));
+              }
+            }
+          }
+
+          header = page::readHeader(this->dataPtr);
+          // Not found; skip according to header
+          if (header == page::Header::StartOfPrefix) {
+            page::advance<uint64_t>(this->dataPtr);
+            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance(this->dataPtr, size);
+          }
+          else if (header == page::Header::StartOfDelta) {
+            page::advance<uint64_t>(this->dataPtr);
+            page::advance<uint64_t>(this->dataPtr);
+            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance(this->dataPtr, size);
+          }
+
+          readPtr = this->dataPtr;
+          header = page::readHeader(readPtr);
+          if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+            std::cout << "Advance inside page" << std::endl;
+          }
+          else {
+            std::cout << "Set this->dataPtr to null" << std::endl;
+            this->dataPtr = nullptr;
+          }
+        }
+        while (this->dataPtr != nullptr);
+
+        return *(reinterpret_cast<TIterator*>(this));
+      }
+
+
+      TIterator& gotoDelta(uint16_t delta) {
+        uint16_t pos = 0;
+        while (pos < delta) {
+          page::Header header = page::readHeader(this->dataPtr);
+          // Not found; skip according to header
+          if (header == page::Header::StartOfPrefix) {
+            page::advance<uint64_t>(this->dataPtr);
+            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            const char* value = page::readString(this->dataPtr, size);
+            this->fullString = std::string(value, value+size);
+          }
+          else if (header == page::Header::StartOfDelta) {
+            page::advance<uint64_t>(this->dataPtr);
+            page::advance<uint64_t>(this->dataPtr);
+            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance(this->dataPtr, size);
+          }
+
+          pos++;
+        }
+
+        char* readPtr = this->dataPtr;
+        page::Header header = page::readHeader(readPtr);
+        if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+          std::cout << "Advance inside page" << std::endl;
+        }
+        else {
+          std::cout << "Set this->dataPtr to null" << std::endl;
+          this->dataPtr = nullptr;
+        }
+
+        return *(reinterpret_cast<TIterator*>(this));
+      }
+  };
+
 }
 
-template<uint64_t TSize, class TType>
+template<uint64_t TSize, class TPage>
 class Page {
-  protected:
-    TType* nextPage;
+  public:
+    TPage* nextPage;
     char data[TSize];
+
+    inline char* getData() {
+      return data;
+    }
 
     Page() : nextPage(nullptr) {
     }
 
-  public:
     const uint64_t size = TSize;
-
-    class Iterator {
-      protected:
-        char* dataPtr;
-        TType* nextPage;
-        std::string fullString;
-
-      public:
-        Iterator(TType* pagePtr) : dataPtr(pagePtr->data), nextPage(pagePtr->nextPage) {
-        }
-    };
-
 };
 
 #endif

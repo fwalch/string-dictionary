@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define BULK_LOAD_RATIO 0.8
+#define BULK_LOAD_RATIO 1.0
 
 inline bool hasDictionary(char counter);
 inline Dictionary* getDictionary(char counter);
