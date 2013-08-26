@@ -17,7 +17,7 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
     MultiUncompressedPage(const MultiUncompressedPage&) = delete;
     MultiUncompressedPage& operator=(const MultiUncompressedPage&) = delete;
 
-    Iterator getId(uint64_t id) {
+    Iterator getId(page::IdType id) {
       return Iterator(this).find(id);
     }
 
@@ -33,14 +33,14 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
 
     class Loader : public page::Loader<MultiUncompressedPage<TSize, TFrequency>> {
       public:
-        void load(std::vector<std::pair<uint64_t, std::string>> values, typename page::Loader<MultiUncompressedPage<TSize, TFrequency>>::CallbackType const &callback) {
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<MultiUncompressedPage<TSize, TFrequency>>::CallbackType const &callback) {
           MultiUncompressedPage<TSize, TFrequency>* currentPage = nullptr;
           MultiUncompressedPage<TSize, TFrequency>* lastPage = nullptr;
           const char* endOfPage = nullptr;
           char* dataPtr = nullptr;
           uint16_t deltaNumber = 0;
-          const uint64_t prefixHeaderSize = sizeof(uint8_t) + 2*sizeof(uint64_t);
-          const uint64_t deltaHeaderSize = sizeof(uint8_t) + 3*sizeof(uint64_t);
+          const uint64_t prefixHeaderSize = sizeof(page::HeaderType) + sizeof(page::IdType) + sizeof(page::StringSizeType);
+          const uint64_t deltaHeaderSize = sizeof(page::HeaderType) + sizeof(page::IdType) + sizeof(page::StringSizeType) + sizeof(page::PrefixSizeType);
 
           uint64_t i = 0;
           const std::string* deltaRef = nullptr;
@@ -56,7 +56,7 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
             }
             else {
               // Will insert delta
-              uint64_t prefixSize;
+              page::PrefixSizeType prefixSize;
               std::string deltaValue = this->delta(*deltaRef, pair.second, prefixSize);
               if (dataPtr != nullptr && dataPtr + deltaHeaderSize + deltaValue.size() > endOfPage) {
                 // "Finish" page
@@ -89,7 +89,7 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
             }
             else {
               assert(deltaRef != nullptr);
-              uint64_t prefixSize;
+              page::PrefixSizeType prefixSize;
               std::string deltaValue = this->delta(*deltaRef, pair.second, prefixSize);
 
               this->startDelta(dataPtr);

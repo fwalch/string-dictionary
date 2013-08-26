@@ -1,23 +1,24 @@
 #ifndef H_Page
 #define H_Page
 
-#include <cstdint>
-#include <string>
-#include <cstring>
 #include <cassert>
-#include <vector>
+#include <cstdint>
+#include <cstring>
 #include <functional>
+#include <limits>
+#include <string>
+#include <vector>
 
 namespace page {
   typedef uint8_t HeaderType;
   typedef uint64_t IdType;
-  typedef uint64_t StringSizeType;
-  typedef uint64_t PrefixSizeType;
+  typedef uint16_t StringSizeType;
+  typedef uint16_t PrefixSizeType;
 
   enum Header : HeaderType {
-    StartOfPrefix = 'x',
-    StartOfDelta = 'y',
-    EndOfPage = 'z'
+    StartOfUncompressedValue = 0,
+    StartOfDelta = 1,
+    EndOfPage = 2
   };
 
   // Advance
@@ -65,7 +66,7 @@ namespace page {
   }
 
   struct Leaf {
-    uint64_t id;
+    IdType id;
     std::string value;
   };
 
@@ -74,11 +75,13 @@ namespace page {
     public:
       typedef std::function<void(TPage*, uint16_t, IdType, std::string)> CallbackType;
     protected:
-      inline std::string delta(const std::string& ref, const std::string& value, uint64_t& pos) {
-        pos = 0;
+      inline std::string delta(const std::string& ref, const std::string& value, PrefixSizeType& prefixSize) {
+        uint64_t pos = 0;
         while (pos < ref.size() && pos < value.size() && ref[pos] == value[pos]) {
           pos++;
         }
+        assert(pos <= std::numeric_limits<PrefixSizeType>::max());
+        prefixSize = static_cast<PrefixSizeType>(pos);
 
         auto delta = value.substr(pos, value.size()-pos);
         return delta;
@@ -86,7 +89,7 @@ namespace page {
 
       // Start/End blocks
       void startPrefix(char*& dataPtr) {
-        writeHeader(dataPtr, page::Header::StartOfPrefix);
+        writeHeader(dataPtr, page::Header::StartOfUncompressedValue);
       }
 
       void startDelta(char*& dataPtr) {
@@ -103,12 +106,13 @@ namespace page {
       }
 
       void writeValue(char*& dataPtr, const std::string& value) {
-        page::write<uint64_t>(dataPtr, value.size());
+        assert(value.size() <= std::numeric_limits<StringSizeType>::max());
+        page::write<StringSizeType>(dataPtr, static_cast<StringSizeType>(value.size()));
         page::writeString(dataPtr, value);
       }
 
-      void writeDelta(char*& dataPtr, const std::string& delta, uint64_t prefixSize) {
-        page::write<uint64_t>(dataPtr, prefixSize);
+      void writeDelta(char*& dataPtr, const std::string& delta, PrefixSizeType prefixSize) {
+        page::write(dataPtr, prefixSize);
         writeValue(dataPtr, delta);
       }
   };
@@ -130,23 +134,23 @@ namespace page {
       const page::Leaf operator*() {
         char* readPtr = this->dataPtr;
         page::Header header = page::readHeader(readPtr);
-        if (header == page::Header::StartOfPrefix) {
-          uint64_t id = page::read<uint64_t>(readPtr);
-          uint64_t size = page::read<uint64_t>(readPtr);
+        if (header == page::Header::StartOfUncompressedValue) {
+          IdType id = page::read<IdType>(readPtr);
+          StringSizeType size = page::read<StringSizeType>(readPtr);
           const char* value = page::readString(readPtr, size);
           this->fullString = std::string(value, value+size);
 
           return page::Leaf {
             id,
-              this->fullString
+            this->fullString
           };
         }
         else {
           assert(header == page::Header::StartOfDelta);
 
-          uint64_t id = page::read<uint64_t>(readPtr);
-          uint64_t prefixSize = page::read<uint64_t>(readPtr);
-          uint64_t size = page::read<uint64_t>(readPtr);
+          IdType id = page::read<IdType>(readPtr);
+          PrefixSizeType prefixSize = page::read<PrefixSizeType>(readPtr);
+          StringSizeType size = page::read<StringSizeType>(readPtr);
           const char* value = page::readString(readPtr, size);
 
           std::string output;
@@ -158,28 +162,28 @@ namespace page {
 
           return page::Leaf {
             id,
-              output
+            output
           };
         }
       }
 
       Iterator& operator++() {
         page::Header header = page::readHeader(this->dataPtr);
-        if (header == page::Header::StartOfPrefix) {
-          page::advance<uint64_t>(this->dataPtr);
-          uint64_t size = page::read<uint64_t>(this->dataPtr);
+        if (header == page::Header::StartOfUncompressedValue) {
+          page::advance<IdType>(this->dataPtr);
+          StringSizeType size = page::read<StringSizeType>(this->dataPtr);
           page::advance(this->dataPtr, size);
         }
         else if (header == page::Header::StartOfDelta) {
-          page::advance<uint64_t>(this->dataPtr);
-          page::advance<uint64_t>(this->dataPtr);
-          uint64_t size = page::read<uint64_t>(this->dataPtr);
+          page::advance<IdType>(this->dataPtr);
+          page::advance<PrefixSizeType>(this->dataPtr);
+          StringSizeType size = page::read<StringSizeType>(this->dataPtr);
           page::advance(this->dataPtr, size);
         }
 
         char* readPtr = this->dataPtr;
         header = page::readHeader(readPtr);
-        if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+        if (header == page::Header::StartOfUncompressedValue || header == page::Header::StartOfDelta) {
         }
         else if (header == page::Header::EndOfPage && this->nextPage != nullptr) {
           this->dataPtr = this->nextPage->getData();
@@ -197,37 +201,37 @@ namespace page {
         }
         char* readPtr = this->dataPtr;
         page::Header header = page::readHeader(readPtr);
-        return (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta)
+        return (header == page::Header::StartOfUncompressedValue || header == page::Header::StartOfDelta)
           || (header == page::Header::EndOfPage && this->nextPage != nullptr);
       }
 
-      TIterator& find(uint64_t id) {
+      TIterator& find(IdType id) {
         do {
           char* readPtr = this->dataPtr;
           page::readHeader(readPtr);
-          uint64_t foundId = page::read<uint64_t>(readPtr);
+          IdType foundId = page::read<IdType>(readPtr);
           if (id == foundId) {
             return *(reinterpret_cast<TIterator*>(this));
           }
 
           page::Header header = page::readHeader(this->dataPtr);
           // Not found; skip according to header
-          if (header == page::Header::StartOfPrefix) {
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
+          if (header == page::Header::StartOfUncompressedValue) {
+            page::advance<IdType>(this->dataPtr);
+            StringSizeType size = page::read<StringSizeType>(this->dataPtr);
             const char* value = page::readString(this->dataPtr, size);
             this->fullString = std::string(value, value+size);
           }
           else if (header == page::Header::StartOfDelta) {
-            page::advance<uint64_t>(this->dataPtr);
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance<IdType>(this->dataPtr);
+            page::advance<PrefixSizeType>(this->dataPtr);
+            StringSizeType size = page::read<StringSizeType>(this->dataPtr);
             page::advance(this->dataPtr, size);
           }
 
           readPtr = this->dataPtr;
           header = page::readHeader(readPtr);
-          if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+          if (header == page::Header::StartOfUncompressedValue || header == page::Header::StartOfDelta) {
           }
           else {
             this->dataPtr = nullptr;
@@ -243,11 +247,11 @@ namespace page {
         do {
           char* readPtr = this->dataPtr;
           page::Header header = page::readHeader(readPtr);
-          page::read<uint64_t>(readPtr);
+          page::read<IdType>(readPtr);
 
-          if (header == page::Header::StartOfPrefix) {
+          if (header == page::Header::StartOfUncompressedValue) {
             // String is stored uncompressed
-            uint64_t size = page::read<uint64_t>(readPtr);
+            StringSizeType size = page::read<StringSizeType>(readPtr);
             const char* value = page::readString(readPtr, size);
 
             assert(pos == 0);
@@ -261,8 +265,8 @@ namespace page {
             this->fullString = std::string(value, value+size);
           }
           else if (header == page::Header::StartOfDelta) {
-            uint64_t prefixSize = page::read<uint64_t>(readPtr);
-            uint64_t size = page::read<uint64_t>(readPtr);
+            PrefixSizeType prefixSize = page::read<PrefixSizeType>(readPtr);
+            StringSizeType size = page::read<StringSizeType>(readPtr);
             if (prefixSize == pos && prefixSize + size == searchValue.size()) {
               // Possible match; compare characters
               const char* value = page::readString(readPtr, size);
@@ -281,21 +285,21 @@ namespace page {
 
           header = page::readHeader(this->dataPtr);
           // Not found; skip according to header
-          if (header == page::Header::StartOfPrefix) {
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
+          if (header == page::Header::StartOfUncompressedValue) {
+            page::advance<IdType>(this->dataPtr);
+            StringSizeType size = page::read<StringSizeType>(this->dataPtr);
             page::advance(this->dataPtr, size);
           }
           else if (header == page::Header::StartOfDelta) {
-            page::advance<uint64_t>(this->dataPtr);
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance<IdType>(this->dataPtr);
+            page::advance<PrefixSizeType>(this->dataPtr);
+            StringSizeType size = page::read<StringSizeType>(this->dataPtr);
             page::advance(this->dataPtr, size);
           }
 
           readPtr = this->dataPtr;
           header = page::readHeader(readPtr);
-          if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+          if (header == page::Header::StartOfUncompressedValue || header == page::Header::StartOfDelta) {
           }
           else {
             this->dataPtr = nullptr;
@@ -312,16 +316,16 @@ namespace page {
         while (pos < delta) {
           page::Header header = page::readHeader(this->dataPtr);
           // Not found; skip according to header
-          if (header == page::Header::StartOfPrefix) {
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
+          if (header == page::Header::StartOfUncompressedValue) {
+            page::advance<IdType>(this->dataPtr);
+            StringSizeType size = page::read<StringSizeType>(this->dataPtr);
             const char* value = page::readString(this->dataPtr, size);
             this->fullString = std::string(value, value+size);
           }
           else if (header == page::Header::StartOfDelta) {
-            page::advance<uint64_t>(this->dataPtr);
-            page::advance<uint64_t>(this->dataPtr);
-            uint64_t size = page::read<uint64_t>(this->dataPtr);
+            page::advance<IdType>(this->dataPtr);
+            page::advance<PrefixSizeType>(this->dataPtr);
+            StringSizeType size = page::read<StringSizeType>(this->dataPtr);
             page::advance(this->dataPtr, size);
           }
 
@@ -330,7 +334,7 @@ namespace page {
 
         char* readPtr = this->dataPtr;
         page::Header header = page::readHeader(readPtr);
-        if (header == page::Header::StartOfPrefix || header == page::Header::StartOfDelta) {
+        if (header == page::Header::StartOfUncompressedValue || header == page::Header::StartOfDelta) {
         }
         else {
           this->dataPtr = nullptr;

@@ -17,7 +17,7 @@ class DynamicPage {
         }
     };
 
-    Iterator getId(uint64_t id) {
+    Iterator getId(page::IdType id) {
       return Iterator(this).find(id);
     }
 
@@ -32,7 +32,7 @@ class DynamicPage {
 
     class Loader : public page::Loader<DynamicPage<TPrefixSize>> {
       private:
-        inline size_t findBlock(const uint8_t searchChar, size_t prefixPos, size_t size, std::pair<uint64_t, std::string>* values, bool& endOfString) {
+        inline size_t findBlock(const uint8_t searchChar, size_t prefixPos, size_t size, std::pair<page::IdType, std::string>* values, bool& endOfString) {
           size_t start = 0;
           size_t end = size-1;
 
@@ -64,13 +64,13 @@ class DynamicPage {
         uint64_t getPageSize(uint64_t size, std::pair<page::IdType, std::string>* values) {
           using namespace page;
 
-          uint64_t pageSize = sizeof(uint64_t); // next page pointer
+          uint64_t pageSize = sizeof(DynamicPage*); // next page pointer
           pageSize += sizeof(HeaderType) + sizeof(IdType) + sizeof(StringSizeType) + values[0].second.size(); // Uncompressed value
 
           pageSize += (size-1)*(sizeof(HeaderType)+sizeof(IdType)+sizeof(PrefixSizeType)+sizeof(StringSizeType)); // Delta headers + IDs
           // Deltas
           for (uint64_t i = 1; i < size; i++) {
-            uint64_t prefixSize;
+            page::PrefixSizeType prefixSize;
             std::string deltaValue = this->delta(values[0].second, values[i].second, prefixSize);
             pageSize += deltaValue.size();
           }
@@ -78,7 +78,7 @@ class DynamicPage {
           return pageSize + sizeof(HeaderType); // End of page header
         }
 
-        DynamicPage<TPrefixSize>* createPage(uint64_t size, std::pair<uint64_t, std::string>* values, typename page::Loader<DynamicPage<TPrefixSize>>::CallbackType callback) {
+        DynamicPage<TPrefixSize>* createPage(uint64_t size, std::pair<page::IdType, std::string>* values, typename page::Loader<DynamicPage<TPrefixSize>>::CallbackType callback) {
           assert(size > 0);
 
           uint64_t pageSize = getPageSize(size, values);
@@ -89,7 +89,7 @@ class DynamicPage {
           char* originalPointer = dataPtr;
 
           // Write header
-          page::write<uint64_t>(dataPtr, 0L); // "next page" pointer placeholder
+          page::write<DynamicPage*>(dataPtr, 0L); // "next page" pointer placeholder
           this->startPrefix(dataPtr);
 
           // Write uncompressed string
@@ -99,7 +99,7 @@ class DynamicPage {
           // Write deltas
           for (uint64_t i = 1; i < size; i++) {
             this->startDelta(dataPtr);
-            uint64_t prefixSize;
+            page::PrefixSizeType prefixSize;
             std::string deltaValue = this->delta(values[0].second, values[i].second, prefixSize);
             this->writeId(dataPtr, values[i].first);
             this->writeDelta(dataPtr, deltaValue, prefixSize);
@@ -112,7 +112,7 @@ class DynamicPage {
         }
 
       public:
-        void load(std::vector<std::pair<uint64_t, std::string>> values, typename page::Loader<DynamicPage<TPrefixSize>>::CallbackType const &callback) {
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<DynamicPage<TPrefixSize>>::CallbackType const &callback) {
           using namespace std;
 
           const size_t size = values.size();

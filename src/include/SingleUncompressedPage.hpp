@@ -16,7 +16,7 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
 
     SingleUncompressedPage(const SingleUncompressedPage&) = delete;
     SingleUncompressedPage& operator=(const SingleUncompressedPage&) = delete;
-    Iterator getId(uint64_t id) {
+    Iterator getId(page::IdType id) {
       return Iterator(this).find(id);
     }
 
@@ -30,20 +30,20 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
 
     class Loader : public page::Loader<SingleUncompressedPage<TSize>> {
       public:
-        void load(std::vector<std::pair<uint64_t, std::string>> values, typename page::Loader<SingleUncompressedPage<TSize>>::CallbackType const &callback) {
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<SingleUncompressedPage<TSize>>::CallbackType const &callback) {
           SingleUncompressedPage<TSize>* currentPage = nullptr;
           SingleUncompressedPage<TSize>* lastPage = nullptr;
           const char* endOfPage = nullptr;
           char* dataPtr = nullptr;
           uint16_t deltaNumber = 0;
-          const uint64_t pageHeaderSize = sizeof(uint8_t) + 2*sizeof(uint64_t);
-          const uint64_t deltaHeaderSize = sizeof(uint8_t) + 3*sizeof(uint64_t);
+          const uint64_t prefixHeaderSize = sizeof(page::HeaderType) + sizeof(page::IdType) + sizeof(page::StringSizeType);
+          const uint64_t deltaHeaderSize = sizeof(page::HeaderType) + sizeof(page::IdType) + sizeof(page::StringSizeType) + sizeof(page::PrefixSizeType);
 
           const std::string* deltaRef = nullptr;
           for (const auto& pair : values) {
             if (deltaRef != nullptr) {
               // Will insert delta
-              uint64_t prefixSize;
+              page::PrefixSizeType prefixSize;
               std::string deltaValue = this->delta(*deltaRef, pair.second, prefixSize);
               if (dataPtr != nullptr && dataPtr + deltaHeaderSize + deltaValue.size() > endOfPage) {
                 // "Finish" page
@@ -65,7 +65,7 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
 
               deltaRef = &pair.second;
 
-              if (dataPtr + pageHeaderSize + pair.second.size() > endOfPage) {
+              if (dataPtr + prefixHeaderSize + pair.second.size() > endOfPage) {
                 assert(false);
               }
 
@@ -80,7 +80,7 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
             }
 
             // Write delta
-            uint64_t prefixSize;
+            page::PrefixSizeType prefixSize;
             std::string deltaValue = this->delta(*deltaRef, pair.second, prefixSize);
             this->startDelta(dataPtr);
             this->writeId(dataPtr, pair.first);
