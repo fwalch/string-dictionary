@@ -8,40 +8,46 @@
  */
 template<uint64_t TSize, uint16_t TFrequency>
 class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TFrequency>> {
-  public:
-    class Iterator;
+  private:
+    class Loader;
 
+  public:
     MultiUncompressedPage() : Page<TSize, MultiUncompressedPage<TSize, TFrequency>>() {
     }
 
     MultiUncompressedPage(const MultiUncompressedPage&) = delete;
     MultiUncompressedPage& operator=(const MultiUncompressedPage&) = delete;
 
-    Iterator getId(page::IdType id) {
+    PageIterator<MultiUncompressedPage<TSize, TFrequency>> getId(page::IdType id) {
       return Iterator(this).find(id);
     }
 
-    Iterator getString(const std::string& str) {
+    PageIterator<MultiUncompressedPage<TSize, TFrequency>> getString(const std::string& str) {
       return Iterator(this).find(str);
     }
 
-    Iterator get(uint16_t deltaValue) {
+    PageIterator<MultiUncompressedPage<TSize, TFrequency>> get(uint16_t deltaValue) {
       return Iterator(this).gotoDelta(deltaValue);
     }
 
-    static std::string name() {
-      return " pages of size " + std::to_string(TSize) + " and each " + std::to_string(TFrequency).append("th string uncompressed.");
+    static std::string description() {
+      return "fixed-size pages (" + std::to_string(TSize) + ") with each " + std::to_string(TFrequency) + "th string uncompressed";
     }
 
-    class Iterator : public page::Iterator<MultiUncompressedPage<TSize, TFrequency>, Iterator> {
+    static inline PageLoader<MultiUncompressedPage<TSize, TFrequency>>* createLoader() {
+      return new Loader();
+    }
+
+  private:
+    class Iterator : public page::Iterator<MultiUncompressedPage<TSize, TFrequency>> {
       public:
-        Iterator(MultiUncompressedPage<TSize, TFrequency>* pagePtr) : page::Iterator<MultiUncompressedPage<TSize, TFrequency>, Iterator>(pagePtr) {
+        Iterator(MultiUncompressedPage<TSize, TFrequency>* pagePtr) : page::Iterator<MultiUncompressedPage<TSize, TFrequency>>(pagePtr) {
         }
     };
 
     class Loader : public page::Loader<MultiUncompressedPage<TSize, TFrequency>> {
       public:
-        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<MultiUncompressedPage<TSize, TFrequency>>::CallbackType const &callback) {
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<MultiUncompressedPage<TSize, TFrequency>>::CallbackType callback) {
           MultiUncompressedPage<TSize, TFrequency>* currentPage = nullptr;
           MultiUncompressedPage<TSize, TFrequency>* lastPage = nullptr;
           const char* endOfPage = nullptr;
@@ -115,7 +121,11 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
     };
 };
 
+#ifdef REAL_SINGLE_PAGE
+#include "SingleUncompressedPage.hpp"
+#else
 template<uint64_t TSize>
 using SingleUncompressedPage = MultiUncompressedPage<TSize, std::numeric_limits<uint16_t>::max()>;
+#endif
 
 #endif

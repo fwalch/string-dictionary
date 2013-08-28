@@ -2,6 +2,7 @@
 #define H_Dictionary
 
 #include <string>
+#include <iostream>
 
 /**
  * Base class for dictionary implementations.
@@ -20,7 +21,8 @@ class Dictionary {
      * @param values Pointer to an array of string values to insert
      * @return True if insertion successful, false otherwise.
      */
-    virtual bool bulkInsert(size_t size, std::string* values) = 0;
+    //TODO: change to iterators
+    virtual void bulkInsert(size_t size, std::string* values) = 0;
 
     /**
      * Inserts a single string value into the dictionary.
@@ -38,7 +40,7 @@ class Dictionary {
      * @param value The new value to assign
      * @return True if update successful, false otherwise
      */
-    virtual bool update(uint64_t& id, std::string value) = 0;
+    //virtual bool update(uint64_t& id, std::string value) = 0;
 
     /**
      * Looks up a string by its value, giving its ID.
@@ -47,7 +49,7 @@ class Dictionary {
      * @param [out] id ID of the given value
      * @return True if the given value was found, false otherwise
      */
-    virtual bool lookup(std::string value, uint64_t& id) = 0;
+    virtual bool lookup(std::string& value, uint64_t& id) const = 0;
 
     /**
      * Looks up a string by its ID, giving its value.
@@ -56,7 +58,7 @@ class Dictionary {
      * @param [out] value Value of the given ID
      * @return True if the given ID was found, false otherwise
      */
-    virtual bool lookup(uint64_t id, std::string& value) = 0;
+    virtual bool lookup(uint64_t id, std::string& value) const = 0;
 
     /**
      * Returns the number of unique string values in the dictionary.
@@ -65,10 +67,12 @@ class Dictionary {
     uint64_t size() const;
 
     /**
-     * Returns a human-readable name for the specific dictionary implementation.
-     * @returns Human-readable name of the dictionary
+     * Returns a human-readable description of the specific dictionary implementation.
+     * @returns Human-readable description of the dictionary
      */
-    virtual std::string name() const = 0;
+    virtual std::string description() const = 0;
 };
+
+std::ostream& operator<<(std::ostream &stream, const Dictionary* dict);
 
 #endif

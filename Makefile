@@ -17,7 +17,7 @@ endif
 
 # Define clang flags
 ifeq ($(CXX),clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-padded -Wno-documentation --std=c++11
+	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-documentation -Wno-weak-template-vtables --std=c++11
 endif
 ifeq ($(CC),clang)
 	CFLAGS = -g -Weverything -Werror --std=c99
@@ -61,7 +61,7 @@ set-debug:
 	$(eval BUILD = DBG)
 
 # Generate targets for source trees
-SOURCES = src test
+SOURCES = src
 include targets.mk
 
 # Include generated dependencies

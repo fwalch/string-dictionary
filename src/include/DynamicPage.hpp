@@ -5,33 +5,41 @@
 
 template<uint32_t TPrefixSize = 1>
 class DynamicPage {
+  private:
+    class Loader;
+
   public:
-    DynamicPage* nextPage;
+    DynamicPage<TPrefixSize>* nextPage;
     char* getData() {
       return &(reinterpret_cast<char*>(this)[sizeof(DynamicPage<TPrefixSize>)]);
     }
 
-    class Iterator : public page::Iterator<DynamicPage<TPrefixSize>, Iterator> {
-      public:
-        Iterator(DynamicPage* pagePtr) : page::Iterator<DynamicPage, Iterator>(pagePtr->getData(), pagePtr->nextPage) {
-        }
-    };
-
-    Iterator getId(page::IdType id) {
+    PageIterator<DynamicPage<TPrefixSize>> getId(page::IdType id) {
       return Iterator(this).find(id);
     }
 
-    Iterator getString(const std::string& str) {
+    PageIterator<DynamicPage<TPrefixSize>> getString(const std::string& str) {
       return Iterator(this).find(str);
     }
 
-    Iterator get(uint16_t delta) {
+    PageIterator<DynamicPage<TPrefixSize>> get(uint16_t delta) {
       return Iterator(this).gotoDelta(delta);
     }
 
-    static std::string name() {
+    static std::string description() {
       return "dynamic pages (prefix size " + std::to_string(TPrefixSize) + ")";
     }
+
+    static inline PageLoader<DynamicPage<TPrefixSize>>* createLoader() {
+      return new Loader();
+    }
+
+  private:
+    class Iterator : public page::Iterator<DynamicPage<TPrefixSize>> {
+      public:
+        Iterator(DynamicPage<TPrefixSize>* pagePtr) : page::Iterator<DynamicPage<TPrefixSize>>(pagePtr->getData(), pagePtr->nextPage) {
+        }
+    };
 
     class Loader : public page::Loader<DynamicPage<TPrefixSize>> {
       private:
@@ -81,14 +89,14 @@ class DynamicPage {
           return pageSize + sizeof(HeaderType); // End of page header
         }
 
-        DynamicPage<TPrefixSize>* createPage(uint64_t size, std::pair<page::IdType, std::string>* values, typename page::Loader<DynamicPage<TPrefixSize>>::CallbackType callback) {
+        DynamicPage<TPrefixSize>* createPage(uint64_t size, std::pair<page::IdType, std::string>* values, typename PageLoader<DynamicPage<TPrefixSize>>::CallbackType callback) {
           assert(size > 0);
 
           uint64_t pageSize = getPageSize(size, values);
           uint16_t deltaNumber = 0;
 
           char* dataPtr = new char[pageSize];
-          callback(reinterpret_cast<DynamicPage*>(dataPtr), deltaNumber++, values[0].first, values[0].second);
+          callback(reinterpret_cast<DynamicPage<TPrefixSize>*>(dataPtr), deltaNumber++, values[0].first, values[0].second);
           char* originalPointer = dataPtr;
 
           // Write header
@@ -106,24 +114,22 @@ class DynamicPage {
             std::string deltaValue = this->delta(values[0].second, values[i].second, prefixSize);
             this->writeId(dataPtr, values[i].first);
             this->writeDelta(dataPtr, deltaValue, prefixSize);
-            callback(reinterpret_cast<DynamicPage*>(originalPointer), deltaNumber++, values[i].first, values[i].second);
+            callback(reinterpret_cast<DynamicPage<TPrefixSize>*>(originalPointer), deltaNumber++, values[i].first, values[i].second);
           }
 
           this->endPage(dataPtr);
 
-          return reinterpret_cast<DynamicPage*>(originalPointer);
+          return reinterpret_cast<DynamicPage<TPrefixSize>*>(originalPointer);
         }
 
       public:
-        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<DynamicPage<TPrefixSize>>::CallbackType const &callback) {
-          using namespace std;
-
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<DynamicPage<TPrefixSize>>::CallbackType callback) {
           const size_t size = values.size();
 
           size_t start = 0;
           size_t end;
           uint32_t searchPos;
-          DynamicPage* lastPage = nullptr;
+          DynamicPage<TPrefixSize>* lastPage = nullptr;
 
           do {
             bool endOfString = false;
@@ -136,7 +142,7 @@ class DynamicPage {
               end = start+findBlock(searchChar, searchPos, end-start+1, &values[start], endOfString);
             }
 
-            DynamicPage* currentPage = createPage(end-start+1, &values[start], callback);
+            DynamicPage<TPrefixSize>* currentPage = createPage(end-start+1, &values[start], callback);
 
             if (lastPage != nullptr) {
               lastPage->nextPage = currentPage;

@@ -8,33 +8,45 @@
  */
 template<uint64_t TSize>
 class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>> {
-  public:
-    class Iterator;
+  private:
+    class Loader;
 
+  public:
     SingleUncompressedPage() : Page<TSize, SingleUncompressedPage<TSize>>() {
     }
 
     SingleUncompressedPage(const SingleUncompressedPage&) = delete;
     SingleUncompressedPage& operator=(const SingleUncompressedPage&) = delete;
-    Iterator getId(page::IdType id) {
+    PageIterator<SingleUncompressedPage<TSize>> getId(page::IdType id) {
       return Iterator(this).find(id);
     }
 
-    Iterator getString(const std::string& str) {
+    PageIterator<SingleUncompressedPage<TSize>> getString(const std::string& str) {
       return Iterator(this).find(str);
     }
 
-    Iterator get(uint16_t delta) {
+    PageIterator<SingleUncompressedPage<TSize>> get(uint16_t delta) {
       return Iterator(this).gotoDelta(delta);
     }
 
-    static std::string name() {
+    static std::string description() {
       return "a single uncompressed string per page";
     }
 
+    static inline PageLoader<SingleUncompressedPage<TSize>>* createLoader() {
+      return new Loader();
+    }
+
+  private:
+    class Iterator : public page::Iterator<SingleUncompressedPage<TSize>> {
+      public:
+        Iterator(SingleUncompressedPage<TSize>* pagePtr) : page::Iterator<SingleUncompressedPage<TSize>>(pagePtr) {
+        }
+    };
+
     class Loader : public page::Loader<SingleUncompressedPage<TSize>> {
       public:
-        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<SingleUncompressedPage<TSize>>::CallbackType const &callback) {
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename page::Loader<SingleUncompressedPage<TSize>>::CallbackType callback) {
           SingleUncompressedPage<TSize>* currentPage = nullptr;
           SingleUncompressedPage<TSize>* lastPage = nullptr;
           const char* endOfPage = nullptr;
@@ -95,12 +107,6 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
 
           this->endPage(dataPtr);
           lastPage = currentPage;
-        }
-    };
-
-    class Iterator : public page::Iterator<SingleUncompressedPage<TSize>, Iterator> {
-      public:
-        Iterator(SingleUncompressedPage<TSize>* pagePtr) : page::Iterator<SingleUncompressedPage<TSize>, Iterator>(pagePtr) {
         }
     };
 };

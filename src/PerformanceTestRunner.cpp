@@ -9,7 +9,10 @@
 #include <vector>
 #include "PerformanceTestRunner.hpp"
 #include "TurtleParser.hpp"
-#include "Dictionaries.hpp"
+
+#include "StringDictionary.hpp"
+#include "Indexes.hpp"
+#include "Pages.hpp"
 
 using namespace std;
 
@@ -35,7 +38,6 @@ inline void lookup(Dictionary*, vector<uint64_t>);
 inline void lookup(Dictionary*, vector<string>);
 inline void rangeLookup(Dictionary*, vector<uint64_t>);
 inline void rangeLookup(Dictionary*, vector<string>);
-inline void update(Dictionary*, vector<uint64_t>, vector<string>);
 
 inline float diff(clock_t start);
 inline uint64_t getMemoryUsage();
@@ -57,7 +59,6 @@ void PerformanceTestRunner::run(istream& tupleStream) {
   vector<uint64_t> lookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> rangeLookupIDs = getRandomIDs(2*numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> neLookupIDs = getRandomIDs(numberOfOperations, numberOfUniqueValues, 2*numberOfUniqueValues);
-  vector<uint64_t> updateIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
 
   vector<string> bulkLoadValues, insertValues;
   bulkLoadValues.reserve(numberOfBulkLoadValues);
@@ -67,19 +68,14 @@ void PerformanceTestRunner::run(istream& tupleStream) {
   vector<uint64_t> valueLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> valueRangeLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> neValueLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
-  vector<uint64_t> valueUpdateIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<string> lookupValues = getValues(valueLookupIDs, uniqueValues);
   vector<string> rangeLookupValues = getPrefixes(valueRangeLookupIDs, uniqueValues);
   vector<string> neLookupValues = getNonExistingValues(neValueLookupIDs, uniqueValues);
-  vector<string> updateValues = getValues(valueUpdateIDs, uniqueValues);
 
   valueRangeLookupIDs.clear();
   neValueLookupIDs.clear();
   valueLookupIDs.clear();
-  valueUpdateIDs.clear();
   uniqueValues.clear();
-
-  cout << endl;
 
   // Load data from into all dictionaries in succession
   for (char counter = 0; hasDictionary(counter); counter++) {
@@ -90,57 +86,53 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 
       Dictionary* dict = getDictionary(counter);
 
-      cout << "# Executing tests with " << dict << "." << endl;
+      cout << endl;
+      cout << "> Executing tests with " << dict << "." << endl;
 
       clock_t start;
 
-      cout << "Bulk-loading " << numberOfBulkLoadValues << " values." << endl;
+      cout << "  Bulk-loading " << numberOfBulkLoadValues << " values." << endl;
       start = clock();
       bulkLoad(dict, bulkLoadValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "[SKIPPED] Inserting " << numberOfOperations << " values." << endl;
+      cout << "  [SKIPPED] Inserting " << numberOfOperations << " values." << endl;
       /*start = clock();
       insert(dict, insertValues);
       cout << " Finished in " << diff(start) << " sec." << endl;*/
-      cout << "Memory usage: " << getMemoryUsage() - baseMemory << "." << endl;
+      cout << "  Memory usage: " << getMemoryUsage() - baseMemory << "." << endl;
 
-      cout << "Looking up " << numberOfOperations << " strings by ID." << endl;
+      cout << "  Looking up " << numberOfOperations << " strings by ID." << endl;
       start = clock();
       lookup(dict, lookupIDs);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Looking up " << numberOfOperations << " strings by value." << endl;
+      cout << "  Looking up " << numberOfOperations << " strings by value." << endl;
       start = clock();
       lookup(dict, lookupValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Executing " << numberOfOperations << " range lookups by ID." << endl;
+      cout << "  Executing " << numberOfOperations << " range lookups by ID." << endl;
       start = clock();
       rangeLookup(dict, rangeLookupIDs);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Executing " << numberOfOperations << " range lookups by value." << endl;
+      cout << "  Executing " << numberOfOperations << " range lookups by value." << endl;
       start = clock();
       rangeLookup(dict, rangeLookupValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Looking up " << numberOfOperations << " non-existing strings by ID." << endl;
+      cout << "  Looking up " << numberOfOperations << " non-existing strings by ID." << endl;
       start = clock();
       lookup(dict, neLookupIDs);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "Looking up " << numberOfOperations << " non-existing strings by value." << endl;
+      cout << "  Looking up " << numberOfOperations << " non-existing strings by value." << endl;
       start = clock();
       lookup(dict, neLookupValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;
+      cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "[SKIPPED] Updating " << numberOfOperations << " strings." << endl;
-      /*start = clock();
-      update(dict, updateIDs, updateValues);
-      cout << " Finished in " << diff(start) << " sec." << endl;*/
-
-      cout << "Finished run for " << dict->name() << endl;
+      cout << "Finished run for " << dict << "." << endl;
 
       delete dict;
 
@@ -159,17 +151,17 @@ inline bool hasDictionary(char counter) {
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
     case 0:
-      return new HARTDictionary<DynamicPage<1>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024>>1)>>();
     case 1:
-      return new HARTDictionary<DynamicPage<48>>();
+      return new StringDictionary<ART, BTree, SingleUncompressedPage<(1024<<0)>>();
     case 2:
-      return new HARTDictionary<DynamicPage<52>>();
+      return new StringDictionary<ART, BPlusTree, SingleUncompressedPage<(1024<<1)>>();
     case 3:
-      return new HARTDictionary<DynamicPage<56>>();
+      return new StringDictionary<Hash, HAT, SingleUncompressedPage<(1024<<2)>>();
     case 4:
-      return new HARTDictionary<DynamicPage<60>>();
+      return new StringDictionary<RedBlack, HAT, SingleUncompressedPage<(1024<<3)>>();
     case 5:
-      return new HARTDictionary<DynamicPage<64>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024<<4)>>();
   }
   assert(false);
   return nullptr;
@@ -185,24 +177,19 @@ class PerfTestDictionary : public Dictionary {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-    bool bulkInsert(size_t size, std::string* v) {
+    void bulkInsert(size_t size, std::string* v) {
+    }
+
+    bool lookup(std::string& value, uint64_t& id) const {
       return false;
     }
 
-    bool update(uint64_t& id, std::string value) {
-      return false;
-    }
-
-    bool lookup(std::string value, uint64_t& id) {
-      return false;
-    }
-
-    bool lookup(uint64_t id, std::string& value) {
+    bool lookup(uint64_t id, std::string& value) const {
       return false;
     }
 #pragma GCC diagnostic pop
 
-    std::string name() const {
+    std::string description() const {
       return "PerformanceTestDictionary";
     }
 };
@@ -287,12 +274,6 @@ inline void rangeLookup(Dictionary* dict, vector<string> prefixes) {
   }
 }
 #pragma GCC diagnostic pop
-
-inline void update(Dictionary* dict, vector<uint64_t> ids, vector<string> values) {
-  for (size_t i = 0; i < ids.size(); i++) {
-    dict->update(ids[i], values[i]);
-  }
-}
 
 inline void splitForBulkLoad(vector<uint64_t> insertIDs, unordered_set<string> values, vector<string>& bulkLoadValues, vector<string>& insertValues) {
   //TODO
