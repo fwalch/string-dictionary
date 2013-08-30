@@ -59,6 +59,7 @@ class StringDictionary : public Dictionary, public LeafStore {
     uint64_t insert(std::string value);
     bool lookup(std::string& value, uint64_t& id) const;
     bool lookup(uint64_t id, std::string& value) const;
+    void rangeLookup(std::string& prefix, RangeLookupCallbackType callback) const;
 };
 
 #include "../StringDictionary.cpp"

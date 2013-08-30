@@ -1,3 +1,4 @@
+#include "boost/algorithm/string.hpp"
 #include <cassert>
 #include "UncompressedDictionary.hpp"
 
@@ -62,4 +63,25 @@ bool UncompressedDictionary::lookup(uint64_t id, std::string& value) {
 
   value = it->second;
   return true;
+}
+
+Dictionary::Iterator UncompressedDictionary::rangeLookup(std::string prefix) {
+  return Iterator(this, prefix);
+}
+
+UncompressedDictionary::Iterator::Iterator(UncompressedDictionary* dictionary, std::string pref) : dict(dictionary), prefix(pref), iterator(dictionary->index.cbegin()) {
+}
+
+Dictionary::Iterator& UncompressedDictionary::Iterator::operator++() {
+  ++iterator;
+  return *this;
+}
+
+UncompressedDictionary::Iterator::operator bool() {
+  return iterator != dict->index.cend()
+    && boost::starts_with(iterator->second, prefix);
+}
+
+const std::pair<uint64_t, std::string> UncompressedDictionary::Iterator::operator*() {
+  return std::make_pair(iterator->first, iterator->second);
 }

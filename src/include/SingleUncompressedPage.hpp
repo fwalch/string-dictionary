@@ -8,9 +8,6 @@
  */
 template<uint64_t TSize>
 class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>> {
-  private:
-    class Loader;
-
   public:
     SingleUncompressedPage() : Page<TSize, SingleUncompressedPage<TSize>>() {
     }
@@ -27,14 +24,6 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
 
     PageIterator<SingleUncompressedPage<TSize>> get(uint16_t delta) {
       return Iterator(this).gotoDelta(delta);
-    }
-
-    static std::string description() {
-      return "a single uncompressed string per page";
-    }
-
-    static inline PageLoader<SingleUncompressedPage<TSize>>* createLoader() {
-      return new Loader();
     }
 
   private:
@@ -109,6 +98,15 @@ class SingleUncompressedPage : public Page<TSize, SingleUncompressedPage<TSize>>
           lastPage = currentPage;
         }
     };
+
+  public:
+    static inline void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<SingleUncompressedPage<TSize>>::CallbackType callback) {
+      Loader().load(values, callback);
+    }
+
+    static std::string description() {
+      return "a single uncompressed string per page (size " + std::to_string(TSize) + ")";
+    }
 };
 
 #endif

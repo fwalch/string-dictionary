@@ -1,4 +1,5 @@
 #include "HashARTDictionary.hpp"
+#include "boost/algorithm/string.hpp"
 
 using namespace std;
 
@@ -48,4 +49,25 @@ bool HashARTDictionary::lookup(uint64_t id, std::string& value) {
 
   value = it->second;
   return true;
+}
+
+Dictionary::Iterator HashARTDictionary::rangeLookup(std::string prefix) {
+  return Iterator(this, prefix);
+}
+
+HashARTDictionary::Iterator::Iterator(HashARTDictionary* dictionary, std::string pref) : dict(dictionary), prefix(pref), iterator(dictionary->index.cbegin()) {
+}
+
+Dictionary::Iterator& HashARTDictionary::Iterator::operator++() {
+  ++iterator;
+  return *this;
+}
+
+HashARTDictionary::Iterator::operator bool() {
+  return iterator != dict->index.cend()
+    && boost::starts_with(iterator->second, prefix);
+}
+
+const std::pair<uint64_t, std::string> HashARTDictionary::Iterator::operator*() {
+  return std::make_pair(iterator->first, iterator->second);
 }

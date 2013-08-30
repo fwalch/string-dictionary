@@ -27,16 +27,15 @@ TEST(MultipleUncompressedStringsPerPage, Create) {
   typedef MultiUncompressedPage<1024, 3> pageType;
 
   std::vector<pageType*> pages;
-  pageType::Loader loader;
-  loader.load(insertValues, [&pages](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
+  pageType::load(insertValues, [&pages](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
       pages.push_back(page);
   });
 
   uint64_t i = 0;
   for (auto iterator = pages.front()->getId(0); iterator; ++iterator) {
     auto leaf = *iterator;
-    ASSERT_EQ(insertValues[i].first, leaf.id);
-    ASSERT_EQ(insertValues[i].second, leaf.value);
+    ASSERT_EQ(insertValues[i].first, leaf.first);
+    ASSERT_EQ(insertValues[i].second, leaf.second);
     i++;
   }
   ASSERT_EQ(i, values.size());
@@ -64,16 +63,15 @@ TEST(SingleUncompressedStringPerPage, Create) {
   typedef SingleUncompressedPage<1024> pageType;
 
   std::vector<pageType*> pages;
-  pageType::Loader loader;
-  loader.load(insertValues, [&pages](pageType* page, uint16_t delta, uint64_t id, std::string value) {
+  pageType::load(insertValues, [&pages](pageType* page, uint16_t delta, uint64_t id, std::string value) {
       pages.push_back(page);
   });
 
   uint64_t i = 0;
   for (auto iterator = pages.front()->getId(0); iterator; ++iterator) {
     auto leaf = *iterator;
-    ASSERT_EQ(insertValues[i].first, leaf.id);
-    ASSERT_EQ(insertValues[i].second, leaf.value);
+    ASSERT_EQ(insertValues[i].first, leaf.first);
+    ASSERT_EQ(insertValues[i].second, leaf.second);
     i++;
   }
   ASSERT_EQ(i, values.size());
@@ -101,8 +99,7 @@ TEST(DynamicPage, Create) {
   typedef DynamicPage<> pageType;
   pageType* firstPage = nullptr;
 
-  pageType::Loader loader;
-  loader.load(insertValues, [&firstPage](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
+  pageType::load(insertValues, [&firstPage](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
     if (firstPage == nullptr) {
       firstPage = page;
     }
@@ -111,8 +108,8 @@ TEST(DynamicPage, Create) {
   uint64_t i = 0;
   for (auto iterator = firstPage->getId(0); iterator; ++iterator) {
     auto leaf = *iterator;
-    ASSERT_EQ(insertValues[i].first, leaf.id);
-    ASSERT_EQ(insertValues[i].second, leaf.value);
+    ASSERT_EQ(insertValues[i].first, leaf.first);
+    ASSERT_EQ(insertValues[i].second, leaf.second);
     i++;
   }
   ASSERT_EQ(i, values.size());

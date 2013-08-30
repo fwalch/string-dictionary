@@ -23,7 +23,7 @@ static constexpr const char* typeStrings[] = {
   "btree",
   "b+tree",
   "hat",
-  "c-art",
+//  "c-art",
 };
 
 inline int usageMessage(const char* argv0) {
@@ -45,7 +45,7 @@ inline Dictionary* getDictionary(std::string name) {
   if (name == typeStrings[5]) return new BTreeDictionary();
   if (name == typeStrings[6]) return new BPlusTreeDictionary();
   if (name == typeStrings[7]) return new HATDictionary();
-  if (name == typeStrings[8]) return new ARTcDictionary();
+  // if (name == typeStrings[8]) return new ARTcDictionary();
 
   return nullptr;
 }

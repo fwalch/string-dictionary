@@ -2,17 +2,22 @@
 #define H_Dictionary
 
 #include <string>
-#include <iostream>
+#include <functional>
 
 /**
  * Base class for dictionary implementations.
  */
 class Dictionary {
   protected:
-    uint64_t nextId = 0;
+    uint64_t nextId = 1;
 
   public:
     virtual ~Dictionary() noexcept;
+
+    /**
+     * Callback type for range (prefix) lookups
+     */
+    typedef std::function<void(uint64_t, std::string)> RangeLookupCallbackType;
 
     /**
      * Inserts multiple string values into the dictionary.
@@ -33,16 +38,6 @@ class Dictionary {
     virtual uint64_t insert(std::string value) = 0;
 
     /**
-     * Updates a string, identified by an ID, to a new value.
-     *
-     * The id parameter will be updated to the new value's ID.
-     * @param id The string's ID
-     * @param value The new value to assign
-     * @return True if update successful, false otherwise
-     */
-    //virtual bool update(uint64_t& id, std::string value) = 0;
-
-    /**
      * Looks up a string by its value, giving its ID.
      *
      * @param [in] value Value to look up
@@ -59,6 +54,14 @@ class Dictionary {
      * @return True if the given ID was found, false otherwise
      */
     virtual bool lookup(uint64_t id, std::string& value) const = 0;
+
+    /**
+     * Looks up a all values starting with a given prefix.
+     *
+     * @param prefix Prefix value
+     * @return Iterator for all matching values
+     */
+    virtual void rangeLookup(std::string& prefix, RangeLookupCallbackType callback) const = 0;
 
     /**
      * Returns the number of unique string values in the dictionary.

@@ -190,7 +190,7 @@ namespace page {
           else {
             this->dataPtr = nullptr;
           }
-          return this;
+          return *this;
         }
 
         operator bool() {

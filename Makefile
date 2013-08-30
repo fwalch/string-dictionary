@@ -61,7 +61,7 @@ set-debug:
 	$(eval BUILD = DBG)
 
 # Generate targets for source trees
-SOURCES = src
+SOURCES = src test
 include targets.mk
 
 # Include generated dependencies

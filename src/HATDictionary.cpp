@@ -1,3 +1,4 @@
+#include "boost/algorithm/string.hpp"
 #include <cassert>
 #include "HATDictionary.hpp"
 
@@ -64,4 +65,40 @@ bool HATDictionary::lookup(uint64_t id, std::string& value) {
   }
   value = it->second;
   return true;
+}
+
+Dictionary::Iterator HATDictionary::rangeLookup(std::string prefix) {
+  return Iterator(*this, hattrie_iter_begin(reverseIndex, true), prefix);
+}
+
+inline bool HATDictionary::Iterator::matchPrefix() {
+  uint64_t* idPtr = hattrie_iter_val(iterator);
+  return boost::starts_with(dict.index[*idPtr], prefix);
+}
+
+HATDictionary::Iterator::Iterator(HATDictionary& dictionary, hattrie_iter_t* it, std::string pref) : dict(dictionary), iterator(it), prefix(pref) {
+  while (!matchPrefix()) {
+    hattrie_iter_next(iterator);
+  }
+}
+
+HATDictionary::Iterator::~Iterator() {
+  hattrie_iter_free(iterator);
+}
+
+const std::pair<uint64_t, std::string> HATDictionary::Iterator::operator*() {
+  uint64_t* idPtr = hattrie_iter_val(iterator);
+  return std::make_pair(
+    *idPtr,
+    dict.index[*idPtr]
+  );
+}
+
+HATDictionary::Iterator& HATDictionary::Iterator::operator++() {
+  hattrie_iter_next(iterator);
+  return *this;
+}
+
+HATDictionary::Iterator::operator bool() {
+  return !hattrie_iter_finished(iterator) && matchPrefix();
 }

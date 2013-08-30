@@ -5,7 +5,7 @@
 #include <string>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <unordered_set>
+#include <set>
 #include <vector>
 #include "PerformanceTestRunner.hpp"
 #include "TurtleParser.hpp"
@@ -16,28 +16,29 @@
 
 using namespace std;
 
-#define BULK_LOAD_RATIO 0.8
+#define BULK_LOAD_RATIO 1.0
+#define OP_RATIO 0.3
 
 inline bool hasDictionary(char counter);
 inline Dictionary* getDictionary(char counter);
 
-inline unordered_set<string> getValues(istream& tupleStream);
+inline set<string> getValues(istream& tupleStream);
 
 /**
  * Creates an array of size numberOfRandomIDs with random values in the range of [lower, upper[.
  */
 inline vector<uint64_t> getRandomIDs(uint64_t numberOfRandomIDs, uint64_t lower, uint64_t upper);
-inline vector<string> getValues(vector<uint64_t> randomIDs, unordered_set<string> values);
-inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, unordered_set<string> values);
-inline vector<string> getPrefixes(vector<uint64_t> randomIDs, unordered_set<string> values);
-inline void splitForBulkLoad(vector<uint64_t> insertIDs, unordered_set<string> values, vector<string>& bulkLoadValues, vector<string>& insertValues);
+inline vector<string> getValues(vector<uint64_t> randomIDs, set<string> values);
+inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, set<string> values);
+inline vector<string> getPrefixes(vector<uint64_t> randomIDs, set<string> values, uint64_t globalPrefixLength);
+inline void splitForBulkLoad(vector<uint64_t> insertIDs, set<string> values, vector<string>& bulkLoadValues, vector<string>& insertValues);
+inline uint64_t getGlobalPrefixLength(set<string>::const_iterator, set<string>::const_reverse_iterator);
 
 inline void bulkLoad(Dictionary*, vector<string>);
 inline void insert(Dictionary*, vector<string>);
-inline void lookup(Dictionary*, vector<uint64_t>);
-inline void lookup(Dictionary*, vector<string>);
-inline void rangeLookup(Dictionary*, vector<uint64_t>);
-inline void rangeLookup(Dictionary*, vector<string>);
+inline void lookup(Dictionary*, vector<uint64_t>, vector<pair<uint64_t, string>>);
+inline void lookup(Dictionary*, vector<string>, vector<pair<uint64_t, string>>);
+inline void rangeLookup(Dictionary*, vector<string>, vector<pair<uint64_t, string>>);
 
 inline float diff(clock_t start);
 inline uint64_t getMemoryUsage();
@@ -47,35 +48,40 @@ inline uint64_t getMemoryUsage();
  */
 void PerformanceTestRunner::run(istream& tupleStream) {
   cout << "Reading string values from turtle file into memory." << endl;
-  unordered_set<string> uniqueValues = getValues(tupleStream);
+  set<string> uniqueValues = getValues(tupleStream);
   uint64_t numberOfUniqueValues = uniqueValues.size();
   uint64_t numberOfBulkLoadValues = static_cast<uint64_t>(BULK_LOAD_RATIO * numberOfUniqueValues);
-  uint64_t numberOfOperations = numberOfUniqueValues-numberOfBulkLoadValues;
+  uint64_t numberOfInserts = numberOfUniqueValues-numberOfBulkLoadValues;
+  uint64_t numberOfOperations = static_cast<uint64_t>(OP_RATIO * numberOfUniqueValues);
 
   cout << " " << "Turtle file contains " << numberOfUniqueValues << " unique string values." << endl;
 
   cout << "Generating random numbers..." << endl;
-  vector<uint64_t> insertIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
+  vector<uint64_t> insertIDs = getRandomIDs(numberOfInserts, 0, numberOfUniqueValues);
   vector<uint64_t> lookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
-  vector<uint64_t> rangeLookupIDs = getRandomIDs(2*numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> neLookupIDs = getRandomIDs(numberOfOperations, numberOfUniqueValues, 2*numberOfUniqueValues);
 
   vector<string> bulkLoadValues, insertValues;
   bulkLoadValues.reserve(numberOfBulkLoadValues);
-  insertValues.reserve(numberOfOperations);
+  insertValues.reserve(numberOfInserts);
   splitForBulkLoad(insertIDs, uniqueValues, bulkLoadValues, insertValues);
+
+  uint64_t globalPrefixLength = getGlobalPrefixLength(uniqueValues.cbegin(), uniqueValues.crbegin());
 
   vector<uint64_t> valueLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> valueRangeLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<uint64_t> neValueLookupIDs = getRandomIDs(numberOfOperations, 0, numberOfUniqueValues);
   vector<string> lookupValues = getValues(valueLookupIDs, uniqueValues);
-  vector<string> rangeLookupValues = getPrefixes(valueRangeLookupIDs, uniqueValues);
+  vector<string> rangeLookupValues = getPrefixes(valueRangeLookupIDs, uniqueValues, globalPrefixLength);
   vector<string> neLookupValues = getNonExistingValues(neValueLookupIDs, uniqueValues);
 
   valueRangeLookupIDs.clear();
   neValueLookupIDs.clear();
   valueLookupIDs.clear();
   uniqueValues.clear();
+
+  vector<pair<uint64_t, string>> lookedUpPairs;
+  lookedUpPairs.reserve(numberOfOperations);
 
   // Load data from into all dictionaries in succession
   for (char counter = 0; hasDictionary(counter); counter++) {
@@ -96,7 +102,7 @@ void PerformanceTestRunner::run(istream& tupleStream) {
       bulkLoad(dict, bulkLoadValues);
       cout << "    Finished in " << diff(start) << " sec." << endl;
 
-      cout << "  [SKIPPED] Inserting " << numberOfOperations << " values." << endl;
+      cout << "  [SKIPPED] Inserting " << numberOfInserts << " values." << endl;
       /*start = clock();
       insert(dict, insertValues);
       cout << " Finished in " << diff(start) << " sec." << endl;*/
@@ -104,32 +110,27 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 
       cout << "  Looking up " << numberOfOperations << " strings by ID." << endl;
       start = clock();
-      lookup(dict, lookupIDs);
+      lookup(dict, lookupIDs, lookedUpPairs);
       cout << "    Finished in " << diff(start) << " sec." << endl;
 
       cout << "  Looking up " << numberOfOperations << " strings by value." << endl;
       start = clock();
-      lookup(dict, lookupValues);
-      cout << "    Finished in " << diff(start) << " sec." << endl;
-
-      cout << "  Executing " << numberOfOperations << " range lookups by ID." << endl;
-      start = clock();
-      rangeLookup(dict, rangeLookupIDs);
+      lookup(dict, lookupValues, lookedUpPairs);
       cout << "    Finished in " << diff(start) << " sec." << endl;
 
       cout << "  Executing " << numberOfOperations << " range lookups by value." << endl;
       start = clock();
-      rangeLookup(dict, rangeLookupValues);
+      rangeLookup(dict, rangeLookupValues, lookedUpPairs);
       cout << "    Finished in " << diff(start) << " sec." << endl;
 
       cout << "  Looking up " << numberOfOperations << " non-existing strings by ID." << endl;
       start = clock();
-      lookup(dict, neLookupIDs);
+      lookup(dict, neLookupIDs, lookedUpPairs);
       cout << "    Finished in " << diff(start) << " sec." << endl;
 
       cout << "  Looking up " << numberOfOperations << " non-existing strings by value." << endl;
       start = clock();
-      lookup(dict, neLookupValues);
+      lookup(dict, neLookupValues, lookedUpPairs);
       cout << "    Finished in " << diff(start) << " sec." << endl;
 
       cout << "Finished run for " << dict << "." << endl;
@@ -145,31 +146,68 @@ void PerformanceTestRunner::run(istream& tupleStream) {
 }
 
 inline bool hasDictionary(char counter) {
-  return counter < 6;
+  return counter < 7;
 }
 
 inline Dictionary* getDictionary(char counter) {
   switch (counter) {
+//    case 0:
+//      return new StringDictionary<ART, HAT, MultiUncompressedPage<(1024>>1), 8>>();
+//    case 1:
+//      return new StringDictionary<ART, HAT, MultiUncompressedPage<(1024>>0), 8>>();
+//    case 2:
+//      return new StringDictionary<ART, HAT, MultiUncompressedPage<(1024<<1), 8>>();
+//    case 3:
+//      return new StringDictionary<ART, HAT, MultiUncompressedPage<(1024<<2), 8>>();
+//    case 4:
+//      return new StringDictionary<ART, HAT, MultiUncompressedPage<(1024<<3), 8>>();
+//    case 5:
+//      return new StringDictionary<ART, ART, MultiUncompressedPage<(1024<<4), 8>>();
     case 0:
-      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024>>1)>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024>>2)>>();
     case 1:
-      return new StringDictionary<ART, BTree, SingleUncompressedPage<(1024<<0)>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024>>1)>>();
     case 2:
-      return new StringDictionary<ART, BPlusTree, SingleUncompressedPage<(1024<<1)>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024<<0)>>();
     case 3:
-      return new StringDictionary<Hash, HAT, SingleUncompressedPage<(1024<<2)>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024<<1)>>();
     case 4:
-      return new StringDictionary<RedBlack, HAT, SingleUncompressedPage<(1024<<3)>>();
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024<<2)>>();
     case 5:
+      return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024<<3)>>();
+    case 6:
       return new StringDictionary<ART, HAT, SingleUncompressedPage<(1024<<4)>>();
+//    case 0:
+//      return new StringDictionary<ART, HAT, DynamicPage<1>>();
+//    case 1:
+//      return new StringDictionary<ART, HAT, DynamicPage<24>>();
+//    case 2:
+//      return new StringDictionary<ART, HAT, DynamicPage<28>>();
+//    case 3:
+//      return new StringDictionary<ART, HAT, DynamicPage<32>>();
+//    case 4:
+//      return new StringDictionary<ART, HAT, DynamicPage<36>>();
+//    case 5:
+//      return new StringDictionary<ART, HAT, DynamicPage<40>>();
+//    case 6:
+//      return new StringDictionary<ART, HAT, DynamicPage<44>>();
+//    case 7:
+//      return new StringDictionary<ART, HAT, DynamicPage<48>>();
+//    case 8:
+//      return new StringDictionary<ART, HAT, DynamicPage<52>>();
+//    case 9:
+//      return new StringDictionary<ART, HAT, DynamicPage<56>>();
+//    case 10:
+//      return new StringDictionary<ART, HAT, DynamicPage<60>>();
+//    case 11:
+//      return new StringDictionary<ART, HAT, DynamicPage<64>>();
   }
-  assert(false);
-  return nullptr;
+  throw;
 }
 
 class PerfTestDictionary : public Dictionary {
   public:
-    unordered_set<std::string> values;
+    set<std::string> values;
 
     ~PerfTestDictionary() noexcept { }
 
@@ -178,14 +216,19 @@ class PerfTestDictionary : public Dictionary {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
     void bulkInsert(size_t size, std::string* v) {
+      throw;
     }
 
     bool lookup(std::string& value, uint64_t& id) const {
-      return false;
+      throw;
     }
 
     bool lookup(uint64_t id, std::string& value) const {
-      return false;
+      throw;
+    }
+
+    void rangeLookup(std::string& prefix, RangeLookupCallbackType callback) const {
+      throw;
     }
 #pragma GCC diagnostic pop
 
@@ -199,7 +242,7 @@ uint64_t PerfTestDictionary::insert(string value) {
   return 0;
 }
 
-inline unordered_set<string> getValues(istream& tupleStream) {
+inline set<string> getValues(istream& tupleStream) {
   TurtleParser parser(tupleStream);
   PerfTestDictionary dict;
   parser.loadInto(&dict);
@@ -233,52 +276,40 @@ inline void insert(Dictionary* dict, vector<string> values) {
     dict->insert(value);
   }
 }
-inline void lookup(Dictionary* dict, vector<uint64_t> ids) {
+
+inline void lookup(Dictionary* dict, vector<uint64_t> ids, vector<pair<uint64_t, string>> lookedUpPairs) {
   for (auto id : ids) {
     string value;
-    dict->lookup(id, value);
+    if (dict->lookup(id, value)) {
+      lookedUpPairs.push_back(make_pair(id, value));
+    }
   }
+  lookedUpPairs.clear();
 }
 
-inline void lookup(Dictionary* dict, vector<string> values) {
+inline void lookup(Dictionary* dict, vector<string> values, vector<pair<uint64_t, string>> lookedUpPairs) {
   for (auto value : values) {
     uint64_t id;
-    dict->lookup(value, id);
-  }
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-inline void rangeLookup(Dictionary* dict, vector<uint64_t> ids) {
-  for (size_t i = 0; i < ids.size(); i += 2) {
-    uint64_t from = ids[i];
-    uint64_t to = ids[i+1];
-    // Swap into correct order
-    if (from > to) {
-      uint64_t tmp = from;
-      from = to;
-      to = tmp;
+    if (dict->lookup(value, id)) {
+      lookedUpPairs.push_back(make_pair(id, value));
     }
-    //TODO: range lookup
-    // dict->rangeLookup(from, to);
   }
+  lookedUpPairs.clear();
 }
-#pragma GCC diagnostic pop
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-inline void rangeLookup(Dictionary* dict, vector<string> prefixes) {
+inline void rangeLookup(Dictionary* dict, vector<string> prefixes, vector<pair<uint64_t, string>> lookedUpPairs) {
   for (string prefix : prefixes) {
-    //TODO: range lookup
-    // dict->rangeLookup(prefix);
+    dict->rangeLookup(prefix, [&](uint64_t id, std::string value) {
+      lookedUpPairs.push_back(make_pair(id, value));
+    });
+    lookedUpPairs.clear();
   }
 }
-#pragma GCC diagnostic pop
 
-inline void splitForBulkLoad(vector<uint64_t> insertIDs, unordered_set<string> values, vector<string>& bulkLoadValues, vector<string>& insertValues) {
+inline void splitForBulkLoad(vector<uint64_t> insertIDs, set<string> values, vector<string>& bulkLoadValues, vector<string>& insertValues) {
   //TODO
   vector<string> valueVector(values.begin(), values.end());
-  unordered_set<uint64_t> idSet(insertIDs.begin(), insertIDs.end());
+  set<uint64_t> idSet(insertIDs.begin(), insertIDs.end());
   for (size_t i = 0; i < values.size(); i++) {
     auto it = idSet.find(i);
     if (it != idSet.end()) {
@@ -292,7 +323,7 @@ inline void splitForBulkLoad(vector<uint64_t> insertIDs, unordered_set<string> v
   sort(bulkLoadValues.begin(), bulkLoadValues.end());
 }
 
-inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, unordered_set<string> values) {
+inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, set<string> values) {
   //TODO
   vector<string> valueVector(values.begin(), values.end());
   vector<string> result;
@@ -303,7 +334,7 @@ inline vector<string> getNonExistingValues(vector<uint64_t> randomIDs, unordered
   return result;
 }
 
-inline vector<string> getValues(vector<uint64_t> randomIDs, unordered_set<string> values) {
+inline vector<string> getValues(vector<uint64_t> randomIDs, set<string> values) {
   //TODO
   vector<string> valueVector(values.begin(), values.end());
   vector<string> result;
@@ -328,19 +359,19 @@ inline uint64_t getMemoryUsage() {
   pclose(proc);
   return static_cast<uint64_t>(atol(result.c_str()));
   /*fstream status("/proc/self/status", ios_base::in);
-  string line;
-  uint64_t memory = 0;
-  while (getline(status, line).good()) {
+    string line;
+    uint64_t memory = 0;
+    while (getline(status, line).good()) {
     if (boost::starts_with(line, "VmRSS")) {
-      assert(memory == 0);
-      memory = static_cast<uint64_t>(atol(line.c_str() + 6));
+    assert(memory == 0);
+    memory = static_cast<uint64_t>(atol(line.c_str() + 6));
     }
-  }
-  status.close();
-  return memory;*/
+    }
+    status.close();
+    return memory;*/
 }
 
-inline vector<string> getPrefixes(vector<uint64_t> randomIDs, unordered_set<string> values) {
+inline vector<string> getPrefixes(vector<uint64_t> randomIDs, set<string> values, uint64_t globalPrefixLength) {
   //TODO
   vector<string> valueVector(values.begin(), values.end());
   vector<string> result;
@@ -350,8 +381,20 @@ inline vector<string> getPrefixes(vector<uint64_t> randomIDs, unordered_set<stri
   mt19937_64 engine(device());
 
   for (uint64_t id : randomIDs) {
-    uniform_int_distribution<uint64_t> dist(3, valueVector[id].size());
+    uniform_int_distribution<uint64_t> dist(globalPrefixLength, valueVector[id].size());
     result.push_back(valueVector[id].substr(0, dist(engine)));
   }
   return result;
+}
+
+inline uint64_t getGlobalPrefixLength(set<string>::const_iterator start, set<string>::const_reverse_iterator end) {
+  string first = *start;
+  string last = *end;
+
+  uint64_t pos = 0;
+  while (first[pos] == last[pos]) {
+    pos++;
+  }
+
+  return pos;
 }

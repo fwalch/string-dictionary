@@ -10,6 +10,12 @@ class DynamicPage {
 
   public:
     DynamicPage<TPrefixSize>* nextPage;
+
+    DynamicPage() = default;
+
+    DynamicPage(const DynamicPage&) = delete;
+    DynamicPage& operator=(const DynamicPage&) = delete;
+
     char* getData() {
       return &(reinterpret_cast<char*>(this)[sizeof(DynamicPage<TPrefixSize>)]);
     }
@@ -24,14 +30,6 @@ class DynamicPage {
 
     PageIterator<DynamicPage<TPrefixSize>> get(uint16_t delta) {
       return Iterator(this).gotoDelta(delta);
-    }
-
-    static std::string description() {
-      return "dynamic pages (prefix size " + std::to_string(TPrefixSize) + ")";
-    }
-
-    static inline PageLoader<DynamicPage<TPrefixSize>>* createLoader() {
-      return new Loader();
     }
 
   private:
@@ -154,6 +152,15 @@ class DynamicPage {
           while(end < size-1);
         }
     };
+
+  public:
+    static inline void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<DynamicPage<TPrefixSize>>::CallbackType callback) {
+      Loader().load(values, callback);
+    }
+
+    static std::string description() {
+      return "dynamic pages (prefix size " + std::to_string(TPrefixSize) + ")";
+    }
 };
 
 #endif

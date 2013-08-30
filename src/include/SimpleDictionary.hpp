@@ -3,6 +3,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "Dictionary.hpp"
 
 /**
@@ -40,7 +41,8 @@ class SimpleDictionary : public Dictionary {
     };
 
   private:
-    std::unordered_map<uint64_t, const char*> index;
+    typedef std::unordered_map<uint64_t, const char*> IndexType;
+    IndexType index;
     std::unordered_map<const char*, uint64_t, hash, equal_to> reverseIndex;
 
   public:
@@ -51,10 +53,26 @@ class SimpleDictionary : public Dictionary {
     bool update(uint64_t& id, std::string value);
     bool lookup(std::string value, uint64_t& id);
     bool lookup(uint64_t id, std::string& value);
+    Iterator rangeLookup(std::string prefix);
 
     std::string name() const {
       return "Hash/Hash (simple compression)";
     }
+
+    class Iterator : public Dictionary::Iterator {
+      private:
+        SimpleDictionary* dict;
+        std::string prefix;
+        SimpleDictionary::IndexType::const_iterator iterator;
+
+      public:
+        Iterator(SimpleDictionary* dict, std::string prefix);
+        const std::pair<uint64_t, std::string> operator*();
+        Iterator& operator++();
+        operator bool();
+    };
+
+    friend Iterator;
 };
 
 #endif

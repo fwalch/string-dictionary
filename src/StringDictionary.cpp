@@ -30,7 +30,7 @@ void StringDictionary<TIdIndex, TStringIndex, TLeaf>::leafCallback(TLeaf* leaf, 
 
 template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
 void StringDictionary<TIdIndex, TStringIndex, TLeaf>::bulkInsert(size_t size, std::string* values) {
-  assert(nextId == 0);
+  assert(nextId == 1);
 
   std::vector<std::pair<uint64_t, std::string>> insertValues;
   insertValues.reserve(size);
@@ -42,9 +42,7 @@ void StringDictionary<TIdIndex, TStringIndex, TLeaf>::bulkInsert(size_t size, st
   typename PageLoader<TLeaf>::CallbackType callback;
   callback = std::bind(&StringDictionary::leafCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 
-  auto loader = TLeaf::createLoader();
-  loader->load(insertValues, callback);
-  delete loader;
+  TLeaf::load(insertValues, callback);
 }
 
 template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
@@ -83,4 +81,30 @@ bool StringDictionary<TIdIndex, TStringIndex, TLeaf>::lookup(uint64_t id, std::s
 template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
 std::pair<uint64_t, std::string> StringDictionary<TIdIndex, TStringIndex, TLeaf>::getLeaf(uint64_t leafValue) const {
   return *decodeLeaf(leafValue);
+}
+
+template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
+void StringDictionary<TIdIndex, TStringIndex, TLeaf>::rangeLookup(std::string& prefix, RangeLookupCallbackType callback) const {
+  std::pair<uint64_t, uint64_t> range = reverseIndex.rangeLookup(prefix);
+
+  if (range.first == 0) {
+    // Prefix not found
+    return;
+  }
+
+  auto startIt = decodeLeaf(range.first);
+
+  assert(range.second != 0);
+  auto endValue = *decodeLeaf(range.second);
+
+  while (startIt) {
+    auto value = *startIt;
+    callback(value.first, value.second);
+
+    if (value.first == endValue.first) {
+      break;
+    }
+
+    ++startIt;
+  }
 }

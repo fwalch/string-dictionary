@@ -22,10 +22,25 @@ class MARTDictionary : public Dictionary {
     bool update(uint64_t& id, std::string value);
     bool lookup(std::string value, uint64_t& id);
     bool lookup(uint64_t id, std::string& value);
+    Dictionary::Iterator rangeLookup(std::string prefix);
 
     std::string name() const {
       return "ART/ART (dynamic size)";
     }
+
+    class Iterator : public Dictionary::Iterator {
+      private:
+        MARTDictionary* dict;
+        std::string prefix;
+
+      public:
+        Iterator(MARTDictionary* dict, std::string prefix);
+        const std::pair<uint64_t, std::string> operator*();
+        Iterator& operator++();
+        operator bool();
+    };
+
+    friend Iterator;
 };
 
 #endif

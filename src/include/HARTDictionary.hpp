@@ -2,6 +2,7 @@
 #define H_HARTDictionary
 
 #include <cassert>
+#include "boost/algorithm/string.hpp"
 #include "AdaptiveRadixTree.hpp"
 #include "hat-trie.h"
 #include "Dictionary.hpp"
@@ -168,11 +169,47 @@ class HARTDictionary : public Dictionary {
       return false;
     }
 
+    Dictionary::Iterator rangeLookup(std::string prefix) {
+      uint64_t* leafPtr = hattrie_tryget(reverseIndex, prefix.c_str(), prefix.size() + 1);
+      if (leafPtr == NULL) {
+        return Dictionary::EmptyIterator();
+      }
+      auto iterator = decodeLeaf(*leafPtr);
+      assert(iterator);
+
+      return Iterator(iterator, prefix);
+    }
+
     std::string name() const {
       return "ART/HAT with " + TPageType::name();
     }
 
+    class Iterator : public Dictionary::Iterator {
+      private:
+        typename TPageType::Iterator& iterator;
+        std::string prefix;
+
+      public:
+        Iterator(typename TPageType::Iterator& it, std::string pref) : iterator(it), prefix(pref) {
+        }
+
+        const std::pair<uint64_t, std::string> operator*() {
+          page::Leaf leaf = *iterator;
+          return std::make_pair(leaf.id, leaf.value);
+        }
+
+        Iterator& operator++() {
+          ++iterator;
+          return *this;
+        }
+
+        operator bool() {
+          return iterator && boost::starts_with((*iterator).value, prefix);
+        }
+    };
+
     friend class ART<TPageType>;
+    friend class Iterator;
 };
 
 #endif

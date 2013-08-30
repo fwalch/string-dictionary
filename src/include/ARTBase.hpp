@@ -1,5 +1,5 @@
-#ifndef H_AdaptiveRadixTree
-#define H_AdaptiveRadixTree
+#ifndef H_ARTBase
+#define H_ARTBase
 
 #include <cstdint>
 #include "LeafStore.hpp"
@@ -32,6 +32,7 @@ class ARTBase {
     bool isLeaf(Node* node) const;
     Node* minimum(Node* node) const;
     Node* maximum(Node* node) const;
+    Node* lookupPrefix(Node* node, uint8_t prefix[], unsigned prefixLength, unsigned depth) const;
     bool leafMatches(Node* leaf, uint8_t key[], unsigned keyLength, unsigned depth) const;
     virtual uint8_t* loadKey(uintptr_t leafValue) const = 0;
     Node* lookupValue(Node* node, uint8_t key[], unsigned keyLength, unsigned depth) const;
@@ -45,19 +46,6 @@ class ARTBase {
   protected:
     ARTBase(LeafStore* leafStore);
     virtual ~ARTBase();
-};
-
-template<class TKey>
-class AdaptiveRadixTree : public ARTBase {
-  private:
-    uint8_t* loadKey(uintptr_t leafValue) const;
-    uint8_t* convertKey(TKey key) const;
-    unsigned keySize(TKey key) const;
-
-  public:
-    AdaptiveRadixTree(LeafStore* leafStore);
-    void insert(TKey key, uintptr_t value);
-    bool lookup(TKey key, uintptr_t& value) const;
 };
 
 #endif

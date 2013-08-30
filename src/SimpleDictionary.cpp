@@ -1,3 +1,4 @@
+#include "boost/algorithm/string.hpp"
 #include <cassert>
 #include <cstring>
 #include <functional>
@@ -76,6 +77,27 @@ bool SimpleDictionary::lookup(uint64_t id, std::string& value) {
 
   value = it->second;
   return true;
+}
+
+Dictionary::Iterator SimpleDictionary::rangeLookup(std::string prefix) {
+  return Iterator(this, prefix);
+}
+
+SimpleDictionary::Iterator::Iterator(SimpleDictionary* dictionary, std::string pref) : dict(dictionary), prefix(pref), iterator(dictionary->index.cbegin()) {
+}
+
+SimpleDictionary::Iterator& SimpleDictionary::Iterator::operator++() {
+  ++iterator;
+  return *this;
+}
+
+SimpleDictionary::Iterator::operator bool() {
+  return iterator != dict->index.cend()
+    && boost::starts_with(iterator->second, prefix);
+}
+
+const std::pair<uint64_t, std::string> SimpleDictionary::Iterator::operator*() {
+  return std::make_pair(iterator->first, iterator->second);
 }
 
 size_t SimpleDictionary::hash::operator()(const char* value) const {

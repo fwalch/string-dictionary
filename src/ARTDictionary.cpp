@@ -43,3 +43,19 @@ bool ARTDictionary::lookup(std::string value, uint64_t& id) {
 bool ARTDictionary::lookup(uint64_t id, std::string& value) {
   return index.lookup(id, value);
 }
+
+Dictionary::Iterator ARTDictionary::rangeLookup(std::string prefix) {
+  return Iterator(this, prefix);
+}
+
+ARTDictionary::Iterator::Iterator(ARTDictionary* dictionary, std::string pref) : dict(dictionary), prefix(pref) {
+}
+
+const std::pair<uint64_t, std::string> ARTDictionary::Iterator::operator*() {
+}
+
+Dictionary::Iterator& ARTDictionary::Iterator::operator++() {
+}
+
+ARTDictionary::Iterator::operator bool() {
+}

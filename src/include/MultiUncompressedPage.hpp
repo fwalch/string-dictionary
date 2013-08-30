@@ -8,9 +8,6 @@
  */
 template<uint64_t TSize, uint16_t TFrequency>
 class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TFrequency>> {
-  private:
-    class Loader;
-
   public:
     MultiUncompressedPage() : Page<TSize, MultiUncompressedPage<TSize, TFrequency>>() {
     }
@@ -28,14 +25,6 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
 
     PageIterator<MultiUncompressedPage<TSize, TFrequency>> get(uint16_t deltaValue) {
       return Iterator(this).gotoDelta(deltaValue);
-    }
-
-    static std::string description() {
-      return "fixed-size pages (" + std::to_string(TSize) + ") with each " + std::to_string(TFrequency) + "th string uncompressed";
-    }
-
-    static inline PageLoader<MultiUncompressedPage<TSize, TFrequency>>* createLoader() {
-      return new Loader();
     }
 
   private:
@@ -119,13 +108,19 @@ class MultiUncompressedPage : public Page<TSize, MultiUncompressedPage<TSize, TF
           lastPage = currentPage;
         }
     };
+
+  public:
+    static inline void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<MultiUncompressedPage<TSize, TFrequency>>::CallbackType callback) {
+      Loader().load(values, callback);
+    }
+
+    static std::string description() {
+      return "fixed-size pages (" + std::to_string(TSize) + ") with each " + std::to_string(TFrequency) + "th string uncompressed";
+    }
 };
 
-#ifdef REAL_SINGLE_PAGE
 #include "SingleUncompressedPage.hpp"
-#else
-template<uint64_t TSize>
-using SingleUncompressedPage = MultiUncompressedPage<TSize, std::numeric_limits<uint16_t>::max()>;
-#endif
+//template<uint64_t TSize>
+//using SingleUncompressedPage = MultiUncompressedPage<TSize, std::numeric_limits<uint16_t>::max()>;
 
 #endif

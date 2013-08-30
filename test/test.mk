@@ -1,10 +1,4 @@
-test_sources = UncompressedDictionaryTests.cpp SimpleDictionaryTests.cpp \
-							 DummyDictionaryTests.cpp TurtleParserTests.cpp \
-							 AdaptiveRadixTreeTests.cpp ARTDictionaryTests.cpp \
-							 HashARTDictionaryTests.cpp BTreeDictionaryTests.cpp \
-							 BPlusTreeDictionaryTests.cpp ARTcDictionaryTests.cpp \
-							 HATDictionaryTests.cpp MARTDictionaryTests.cpp PageTests.cpp \
-							 HARTDictionaryTests.cpp
+test_sources = PageTests.cpp ARTTests.cpp HATTests.cpp
 test_executables = test
 test_dependencies = src
 test_libraries = gmock gtest
