@@ -17,6 +17,7 @@ template<typename TKey> class HAT {
     bool lookup(TKey key, uint64_t& value) const;
     std::pair<uint64_t, uint64_t> rangeLookup(TKey prefix) const;
     static std::string description();
+    void debug() { }
 };
 
 #endif

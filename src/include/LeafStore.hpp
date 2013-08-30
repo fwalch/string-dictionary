@@ -10,7 +10,8 @@
 class LeafStore {
   public:
     virtual ~LeafStore();
-    virtual std::pair<uint64_t, std::string> getLeaf(uint64_t leafValue) const = 0;
+    virtual std::string getValue(uint64_t leafValue) const = 0;
+    virtual uint64_t getId(uint64_t leafValue) const = 0;
 };
 
 #endif

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <functional>
+#include "Exception.hpp"
 
 /**
  * Base class for dictionary implementations.
@@ -44,7 +45,7 @@ class Dictionary {
      * @param [out] id ID of the given value
      * @return True if the given value was found, false otherwise
      */
-    virtual bool lookup(std::string& value, uint64_t& id) const = 0;
+    virtual bool lookup(std::string value, uint64_t& id) const = 0;
 
     /**
      * Looks up a string by its ID, giving its value.
@@ -61,7 +62,7 @@ class Dictionary {
      * @param prefix Prefix value
      * @return Iterator for all matching values
      */
-    virtual void rangeLookup(std::string& prefix, RangeLookupCallbackType callback) const = 0;
+    virtual void rangeLookup(std::string prefix, RangeLookupCallbackType callback) const = 0;
 
     /**
      * Returns the number of unique string values in the dictionary.
@@ -74,6 +75,14 @@ class Dictionary {
      * @returns Human-readable description of the dictionary
      */
     virtual std::string description() const = 0;
+
+    /**
+     * Returns the number of leaves in the dictionary.
+     * @returns Number of leaves in the dictionary.
+     */
+    virtual std::string numberOfLeaves() const = 0;
+
+    virtual void debug() const { }
 };
 
 std::ostream& operator<<(std::ostream &stream, const Dictionary* dict);

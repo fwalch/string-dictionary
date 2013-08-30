@@ -61,9 +61,11 @@ $(foreach source, $(SOURCES), $(eval $(call generate_targets,$(source))))
 # General targets
 $(EXECUTABLES:%=compile-%): compile-%: prepare-compile $(EXE_DIR)/%
 $(EXECUTABLES:%=debug-%): debug-%: set-debug compile-%
+$(EXECUTABLES:%=release-%): release-%: set-release compile-%
 prepare-compile:
 	$(eval CXXFLAGS += $($(BUILD)FLAGS))
 	$(eval CFLAGS += $($(BUILD)FLAGS))
 	$(eval LDFLAGS += $($(BUILD)FLAGS))
 compile-executables: $(EXECUTABLES:%=compile-%)
 debug-executables: $(EXECUTABLES:%=debug-%)
+release-executables: $(EXECUTABLES:%=release-%)

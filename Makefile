@@ -17,7 +17,7 @@ endif
 
 # Define clang flags
 ifeq ($(CXX),clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-documentation -Wno-weak-template-vtables --std=c++11
+	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-documentation -Wno-weak-template-vtables -Wno-shadow -Wno-switch-enum -Wno-vla -Wno-vla-extension --std=c++11
 endif
 ifeq ($(CC),clang)
 	CFLAGS = -g -Weverything -Werror --std=c99
@@ -25,7 +25,7 @@ endif
 
 # Define gcc flags
 ifeq ($(CXX),g++)
-	CXXFLAGS = -g -Wall -Wextra -Werror -Wno-type-limits -Wno-maybe-uninitialized -Wno-strict-aliasing --std=c++11
+	CXXFLAGS = -g -Wall -Wextra -Werror -Wno-type-limits -Wno-maybe-uninitialized -Wno-strict-aliasing -Wno-attributes --std=c++11
 endif
 ifeq ($(CC),gcc)
 	CFLAGS = -g -Wall -Wextra -Werror --std=c99
@@ -45,11 +45,12 @@ BUILDCC   = $(CC) -c $$(CFLAGS) -MD -MF $$(@:%.o=%.d) $$< -o $$@
 BUILDEXE  = $(CXX) $$(LDFLAGS) $$^ -o $$@
 
 # Default build type
-BUILD = REL
+BUILD = DBG
 
 # Main targets
 all: compile-executables
 debug: debug-executables
+release: release-executables
 clean:
 	find $(OBJ_DIR) -type f -and -name '*.o' -delete 2> /dev/null || true
 	find $(EXE_DIR) -type f -and -not -name '*.sh' -delete 2> /dev/null || true
@@ -59,6 +60,8 @@ purge: clean
 # Helper targets
 set-debug:
 	$(eval BUILD = DBG)
+set-release:
+	$(eval BUILD = REL)
 
 # Generate targets for source trees
 SOURCES = src test

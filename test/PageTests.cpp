@@ -27,7 +27,7 @@ TEST(MultipleUncompressedStringsPerPage, Create) {
   typedef MultiUncompressedPage<1024, 3> pageType;
 
   std::vector<pageType*> pages;
-  pageType::load(insertValues, [&pages](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
+  pageType::load(insertValues, [&pages](pageType* page, uint16_t deltaValue, uint16_t offset, uint64_t id, std::string value) {
       pages.push_back(page);
   });
 
@@ -63,7 +63,7 @@ TEST(SingleUncompressedStringPerPage, Create) {
   typedef SingleUncompressedPage<1024> pageType;
 
   std::vector<pageType*> pages;
-  pageType::load(insertValues, [&pages](pageType* page, uint16_t delta, uint64_t id, std::string value) {
+  pageType::load(insertValues, [&pages](pageType* page, uint16_t delta, uint16_t offset, uint64_t id, std::string value) {
       pages.push_back(page);
   });
 
@@ -99,7 +99,7 @@ TEST(DynamicPage, Create) {
   typedef DynamicPage<> pageType;
   pageType* firstPage = nullptr;
 
-  pageType::load(insertValues, [&firstPage](pageType* page, uint16_t deltaValue, uint64_t id, std::string value) {
+  pageType::load(insertValues, [&firstPage](pageType* page, uint16_t deltaValue, uint16_t offset, uint64_t id, std::string value) {
     if (firstPage == nullptr) {
       firstPage = page;
     }

@@ -1,36 +1,16 @@
+#ifdef DEBUG
+#undef NDEBUG
 #include <cassert>
+#endif
 #include <type_traits>
 #include <vector>
 #include "StringDictionary.hpp"
 
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-uint64_t StringDictionary<TIdIndex, TStringIndex, TLeaf>::encodeLeaf(TLeaf* leaf, uint16_t deltaNumber) const {
-  uint64_t leafValue = reinterpret_cast<uint64_t>(leaf);
-  leafValue = leafValue <<16;
-  leafValue |= static_cast<uint64_t>(deltaNumber);
-
-  return leafValue;
-}
-
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-PageIterator<TLeaf> StringDictionary<TIdIndex, TStringIndex, TLeaf>::decodeLeaf(uint64_t leafValue) const {
-  TLeaf* leaf = reinterpret_cast<TLeaf*>(leafValue >> 16);
-  uint16_t deltaNumber = leafValue & 0xFFFF;
-
-  return leaf->get(deltaNumber);
-}
-
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-void StringDictionary<TIdIndex, TStringIndex, TLeaf>::leafCallback(TLeaf* leaf, uint16_t deltaNumber, uint64_t id, std::string value) {
-  uint64_t leafValue = encodeLeaf(leaf, deltaNumber);
-
-  reverseIndex.insert(value, leafValue);
-  index.insert(id, leafValue);
-}
-
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-void StringDictionary<TIdIndex, TStringIndex, TLeaf>::bulkInsert(size_t size, std::string* values) {
+template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf, template<typename, typename, typename> class TConstructionStrategy>
+void StringDictionary<TIdIndex, TStringIndex, TLeaf, TConstructionStrategy>::bulkInsert(size_t size, std::string* values) {
+#ifdef DEBUG
   assert(nextId == 1);
+#endif
 
   std::vector<std::pair<uint64_t, std::string>> insertValues;
   insertValues.reserve(size);
@@ -40,71 +20,101 @@ void StringDictionary<TIdIndex, TStringIndex, TLeaf>::bulkInsert(size_t size, st
   }
 
   typename PageLoader<TLeaf>::CallbackType callback;
-  callback = std::bind(&StringDictionary::leafCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+  callback = std::bind(&TConstructionStrategy<TIdIndex<uint64_t>, TStringIndex<std::string>, TLeaf>::leafCallback, constructionStrategy, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
 
   TLeaf::load(insertValues, callback);
 }
 
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-uint64_t StringDictionary<TIdIndex, TStringIndex, TLeaf>::insert(std::string value) {
+template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf, template<typename, typename, typename> class TConstructionStrategy>
+uint64_t StringDictionary<TIdIndex, TStringIndex, TLeaf, TConstructionStrategy>::insert(std::string value) {
   //TODO: create Leaf
   //return reverseIndex.tryInsert(value, nextId);
   throw value;
 }
 
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-bool StringDictionary<TIdIndex, TStringIndex, TLeaf>::lookup(std::string& value, uint64_t& id) const {
+template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf, template<typename, typename, typename> class TConstructionStrategy>
+bool StringDictionary<TIdIndex, TStringIndex, TLeaf, TConstructionStrategy>::lookup(std::string value, uint64_t& id) const {
   uint64_t leafValue;
   if (reverseIndex.lookup(value, leafValue)) {
-    auto iterator = decodeLeaf(leafValue);
-    assert(iterator);
+    auto iterator = constructionStrategy.decodeLeaf(leafValue, value);
 
-    id = (*iterator).first;
+#ifdef DEBUG
+    if (!iterator) {
+      std::cout << "Iterator not found for " << value << "; debug." << std::endl;
+      debug();
+      std::cout << "Second lookup" << std::endl;
+      reverseIndex.lookup(value, leafValue);
+      std::cout << "---" << std::endl;
+      std::cout << "Leaf value: " << leafValue << std::endl;
+      std::cout << "---" << std::endl;
+      iterator.debug();
+      throw Exception("Iterator not found for "+value+"; debug.");
+    }
+    //assert(iterator);
+#endif
+
+#ifdef DEBUG
+    auto itValue = *iterator;
+    id = itValue.first;
+    if (value != itValue.second) {
+      //debug();
+      std::cout << "---" << std::endl;
+      std::cout << "Leaf value: " << leafValue << std::endl;
+      std::cout << "Actual value: " << value << std::endl;
+      std::cout << "Found value: " << itValue.second << std::endl;
+      std::cout << "---" << std::endl;
+      iterator.debug();
+      throw Exception("Iterator value"+itValue.second+" doesn't match "+value+"; debug.");
+    }
+    assert(value == itValue.second);
+#else
+    id = iterator.getId();
+#endif
+
     return true;
   }
+  std::cout << "Reverse not found" << std::endl;
   return false;
 }
 
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-bool StringDictionary<TIdIndex, TStringIndex, TLeaf>::lookup(uint64_t id, std::string& value) const {
+template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf, template<typename, typename, typename> class TConstructionStrategy>
+bool StringDictionary<TIdIndex, TStringIndex, TLeaf, TConstructionStrategy>::lookup(uint64_t id, std::string& value) const {
   uint64_t leafValue;
   if (index.lookup(id, leafValue)) {
-    auto iterator = decodeLeaf(leafValue);
-    assert(iterator);
+    auto iterator = constructionStrategy.decodeLeaf(leafValue, id);
 
-    value = (*iterator).second;
+#ifdef DEBUG
+    assert(iterator);
+#endif
+
+#ifdef DEBUG
+    auto itValue = *iterator;
+    value = itValue.second;
+    assert(id == itValue.first);
+#else
+    value = iterator.getValue();
+#endif
+
     return true;
   }
   return false;
 }
 
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-std::pair<uint64_t, std::string> StringDictionary<TIdIndex, TStringIndex, TLeaf>::getLeaf(uint64_t leafValue) const {
-  return *decodeLeaf(leafValue);
-}
+template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf, template<typename, typename, typename> class TConstructionStrategy>
+void StringDictionary<TIdIndex, TStringIndex, TLeaf, TConstructionStrategy>::rangeLookup(std::string prefix, RangeLookupCallbackType callback) const {
+  PageIterator<TLeaf> startIt, endIt;
+  if (constructionStrategy.rangeLookup(prefix, startIt, endIt)) {
 
-template<template<typename TId> class TIdIndex, template<typename TString> class TStringIndex, class TLeaf>
-void StringDictionary<TIdIndex, TStringIndex, TLeaf>::rangeLookup(std::string& prefix, RangeLookupCallbackType callback) const {
-  std::pair<uint64_t, uint64_t> range = reverseIndex.rangeLookup(prefix);
+    uint64_t endId = (*endIt).first;
+    while (startIt) {
+      auto value = *startIt;
+      callback(value.first, value.second);
 
-  if (range.first == 0) {
-    // Prefix not found
-    return;
-  }
+      if (value.first == endId) {
+        break;
+      }
 
-  auto startIt = decodeLeaf(range.first);
-
-  assert(range.second != 0);
-  auto endValue = *decodeLeaf(range.second);
-
-  while (startIt) {
-    auto value = *startIt;
-    callback(value.first, value.second);
-
-    if (value.first == endValue.first) {
-      break;
+      ++startIt;
     }
-
-    ++startIt;
   }
 }

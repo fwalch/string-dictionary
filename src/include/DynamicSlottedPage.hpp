@@ -1,44 +1,32 @@
-#ifndef H_DynamicPage
-#define H_DynamicPage
+#ifndef H_DynamicSlottedPage
+#define H_DynamicSlottedPage
 
 #include "Page.hpp"
 
 template<uint32_t TPrefixSize = 1>
-class DynamicPage {
+class DynamicSlottedPage {
   private:
     class Loader;
 
   public:
     static uint64_t counter;
-    DynamicPage<TPrefixSize>* nextPage;
+    DynamicSlottedPage<TPrefixSize>* nextPage;
 
-    DynamicPage() = default;
+    DynamicSlottedPage() = default;
 
-    DynamicPage(const DynamicPage&) = delete;
-    DynamicPage& operator=(const DynamicPage&) = delete;
+    DynamicSlottedPage(const DynamicSlottedPage&) = delete;
+    DynamicSlottedPage& operator=(const DynamicSlottedPage&) = delete;
 
     char* getData() {
-      return &(reinterpret_cast<char*>(this)[sizeof(DynamicPage<TPrefixSize>)]);
+      return &(reinterpret_cast<char*>(this)[sizeof(DynamicSlottedPage<TPrefixSize>)]);
     }
 
-    PageIterator<DynamicPage<TPrefixSize>> getId(page::IdType id) {
-      return PageIterator<DynamicPage<TPrefixSize>>(this).find(id);
-    }
-
-    PageIterator<DynamicPage<TPrefixSize>> getString(const std::string& str) {
-      return PageIterator<DynamicPage<TPrefixSize>>(this).find(str);
-    }
-
-    PageIterator<DynamicPage<TPrefixSize>> getByDelta(uint16_t delta) {
-      return PageIterator<DynamicPage<TPrefixSize>>(this).gotoDelta(delta);
-    }
-
-    PageIterator<DynamicPage<TPrefixSize>> getByOffset(uint16_t offset) {
-      return PageIterator<DynamicPage<TPrefixSize>>(this).gotoOffset(offset);
+    PageIterator<DynamicSlottedPage<TPrefixSize>> getIndexEntry(page::IndexEntriesType indexEntry) {
+      return PageIterator<DynamicSlottedPage<TPrefixSize>>(this).getIndexEntry(indexEntry);
     }
 
   private:
-    class Loader : public page::Loader<DynamicPage<TPrefixSize>> {
+    class Loader : public page::Loader<DynamicSlottedPage<TPrefixSize>> {
       private:
         inline size_t findBlock(const uint8_t searchChar, size_t prefixPos, size_t size, std::pair<page::IdType, std::string>* values, bool& endOfString) {
           size_t start = 0;
@@ -77,6 +65,11 @@ class DynamicPage {
           uint64_t pageSize = sizeof(uintptr_t); // next page pointer
           pageSize += sizeof(HeaderType) + sizeof(IdType) + sizeof(StringSizeType) + values[0].second.size(); // Uncompressed value
 
+          // Index section
+          pageSize += sizeof(HeaderType); // Index header
+          pageSize += sizeof(page::IndexEntriesType); // No of entries in index
+          pageSize += (size-1)*(sizeof(OffsetType)); // Index entries
+
           pageSize += (size-1)*(sizeof(HeaderType)+sizeof(IdType)+sizeof(PrefixSizeType)+sizeof(StringSizeType)); // Delta headers + IDs
           // Deltas
           for (uint64_t i = 1; i < size; i++) {
@@ -88,52 +81,66 @@ class DynamicPage {
           return pageSize + sizeof(HeaderType); // End of page header
         }
 
-        DynamicPage<TPrefixSize>* createPage(uint64_t size, std::pair<page::IdType, std::string>* values, typename PageLoader<DynamicPage<TPrefixSize>>::CallbackType callback) {
+        DynamicSlottedPage<TPrefixSize>* createPage(uint64_t size, std::pair<page::IdType, std::string>* values, typename PageLoader<DynamicSlottedPage<TPrefixSize>>::CallbackType callback) {
 #ifdef DEBUG
           assert(size > 0);
 #endif
           counter++;
 
           uint64_t pageSize = getPageSize(size, values);
-          uint16_t deltaNumber = 0;
 
           char* dataPtr = new char[pageSize];
           char* originalPointer = dataPtr;
-          uintptr_t valuePtr;
 
           // Write header
           page::write<uintptr_t>(dataPtr, 0L); // "next page" pointer placeholder
-          valuePtr = this->startPrefix(dataPtr);
+          // Write index
+          this->startIndex(dataPtr);
+          assert(size-1 <= std::numeric_limits<page::IndexEntriesType>::max());
+          page::write<page::IndexEntriesType>(dataPtr, static_cast<page::IndexEntriesType>(size-1));
+          page::OffsetType* indexAddress = reinterpret_cast<page::OffsetType*>(dataPtr);
+          page::advance<page::OffsetType>(dataPtr, size-1);
 
-          page::Loader<DynamicPage<TPrefixSize>>::call(callback, reinterpret_cast<DynamicPage<TPrefixSize>*>(originalPointer), deltaNumber++, valuePtr, values[0].first, values[0].second);
+          // Write uncompressed section
+          uintptr_t startOfUncompressedSection = this->startPrefix(dataPtr);
+
+          callback(reinterpret_cast<DynamicSlottedPage<TPrefixSize>*>(originalPointer), 0, 0, values[0].first, values[0].second);
 
           // Write uncompressed string
           this->writeId(dataPtr, values[0].first);
           this->writeValue(dataPtr, values[0].second);
 
           // Write deltas
-          for (uint64_t i = 1; i < size; i++) {
-            valuePtr = this->startDelta(dataPtr);
+          for (page::IndexEntriesType i = 1; i < size; i++) {
+            uintptr_t valuePtr = this->startDelta(dataPtr);
             page::PrefixSizeType prefixSize;
             std::string deltaValue = this->delta(values[0].second, values[i].second, prefixSize);
             this->writeId(dataPtr, values[i].first);
             this->writeDelta(dataPtr, deltaValue, prefixSize);
-            page::Loader<DynamicPage<TPrefixSize>>::call(callback, reinterpret_cast<DynamicPage<TPrefixSize>*>(originalPointer), deltaNumber++, valuePtr, values[i].first, values[i].second);
+
+            assert((valuePtr-startOfUncompressedSection) <= std::numeric_limits<page::OffsetType>::max());
+
+            // Write to index
+            // Delta number 1 is first delta (0=uncompressed),
+            // is zeroth entry in array => deltaNumber-1
+            indexAddress[i-1] = static_cast<page::OffsetType>(valuePtr - startOfUncompressedSection);
+
+            callback(reinterpret_cast<DynamicSlottedPage<TPrefixSize>*>(originalPointer), i, 0, values[i].first, values[i].second);
           }
 
           this->endPage(dataPtr);
 
-          return reinterpret_cast<DynamicPage<TPrefixSize>*>(originalPointer);
+          return reinterpret_cast<DynamicSlottedPage<TPrefixSize>*>(originalPointer);
         }
 
       public:
-        void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<DynamicPage<TPrefixSize>>::CallbackType callback) {
+        void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<DynamicSlottedPage<TPrefixSize>>::CallbackType callback) {
           const size_t size = values.size();
 
           size_t start = 0;
           size_t end;
           uint32_t searchPos;
-          DynamicPage<TPrefixSize>* lastPage = nullptr;
+          DynamicSlottedPage<TPrefixSize>* lastPage = nullptr;
 
           do {
             bool endOfString = false;
@@ -146,7 +153,7 @@ class DynamicPage {
               end = start+findBlock(searchChar, searchPos, end-start+1, &values[start], endOfString);
             }
 
-            DynamicPage<TPrefixSize>* currentPage = createPage(end-start+1, &values[start], callback);
+            DynamicSlottedPage<TPrefixSize>* currentPage = createPage(end-start+1, &values[start], callback);
 
             if (lastPage != nullptr) {
               lastPage->nextPage = currentPage;
@@ -160,18 +167,18 @@ class DynamicPage {
     };
 
   public:
-    static inline void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<DynamicPage<TPrefixSize>>::CallbackType callback) {
+    static inline void load(std::vector<std::pair<page::IdType, std::string>> values, typename PageLoader<DynamicSlottedPage<TPrefixSize>>::CallbackType callback) {
       Loader().load(values, callback);
     }
 
     static std::string description() {
       return std::to_string(TPrefixSize);
-      //return "Dynamic"+std::to_string(TPrefixSize);
+      //return "DynamicSlotted"+std::to_string(TPrefixSize);
       //return "dynamic pages (prefix size " + std::to_string(TPrefixSize) + ")";
     }
 };
 
 template<uint32_t TPrefixSize>
-uint64_t DynamicPage<TPrefixSize>::counter = 0;
+uint64_t DynamicSlottedPage<TPrefixSize>::counter = 0;
 
 #endif

@@ -19,7 +19,7 @@ bool RedBlack<TKey>::lookup(TKey key, uint64_t& value) const {
 
 template<typename TKey>
 std::string RedBlack<TKey>::description() {
-  return "Red-Black-Tree";
+  return "RedBlack";
 }
 
 template class RedBlack<uint64_t>;

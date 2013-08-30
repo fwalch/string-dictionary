@@ -1,5 +1,7 @@
 #include "boost/algorithm/string.hpp"
+#ifdef DEBUG
 #include <cassert>
+#endif
 #include <cstring>
 #include <functional>
 #include "SimpleDictionary.hpp"
@@ -27,8 +29,10 @@ uint64_t SimpleDictionary::insert(string value) {
   return reverseIt->second;
 }
 
-bool SimpleDictionary::bulkInsert(size_t size, string* values) {
-  assert(nextId == 0);
+void SimpleDictionary::bulkInsert(size_t size, string* values) {
+#ifdef DEBUG
+  assert(nextId == 1);
+#endif
 
   index.reserve(size);
   reverseIndex.reserve(size);
@@ -40,8 +44,6 @@ bool SimpleDictionary::bulkInsert(size_t size, string* values) {
     index[nextId] = insertValue;
     reverseIndex[insertValue] = nextId;
   }
-
-  return true;
 }
 
 bool SimpleDictionary::update(uint64_t& id, std::string value) {
@@ -57,7 +59,7 @@ bool SimpleDictionary::update(uint64_t& id, std::string value) {
   return true;
 }
 
-bool SimpleDictionary::lookup(std::string value, uint64_t& id) {
+bool SimpleDictionary::lookup(std::string value, uint64_t& id) const {
   auto reverseIt = reverseIndex.find(value.c_str());
 
   if (reverseIt == reverseIndex.end()) {
@@ -68,7 +70,7 @@ bool SimpleDictionary::lookup(std::string value, uint64_t& id) {
   return true;
 }
 
-bool SimpleDictionary::lookup(uint64_t id, std::string& value) {
+bool SimpleDictionary::lookup(uint64_t id, std::string& value) const {
   auto it = index.find(id);
 
   if (it == index.end()) {
@@ -79,26 +81,12 @@ bool SimpleDictionary::lookup(uint64_t id, std::string& value) {
   return true;
 }
 
-Dictionary::Iterator SimpleDictionary::rangeLookup(std::string prefix) {
-  return Iterator(this, prefix);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+void SimpleDictionary::rangeLookup(std::string prefix, RangeLookupCallbackType callback) const {
+  throw;
 }
-
-SimpleDictionary::Iterator::Iterator(SimpleDictionary* dictionary, std::string pref) : dict(dictionary), prefix(pref), iterator(dictionary->index.cbegin()) {
-}
-
-SimpleDictionary::Iterator& SimpleDictionary::Iterator::operator++() {
-  ++iterator;
-  return *this;
-}
-
-SimpleDictionary::Iterator::operator bool() {
-  return iterator != dict->index.cend()
-    && boost::starts_with(iterator->second, prefix);
-}
-
-const std::pair<uint64_t, std::string> SimpleDictionary::Iterator::operator*() {
-  return std::make_pair(iterator->first, iterator->second);
-}
+#pragma GCC diagnostic pop
 
 size_t SimpleDictionary::hash::operator()(const char* value) const {
   return std::hash<string>()(value);

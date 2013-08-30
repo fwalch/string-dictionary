@@ -240,6 +240,7 @@ struct ReverseIndexMART::Node256 : Node {
     Node::print(indent);
 
     for (uint16_t i = 0; i < 256; i++) {
+      if (!child[i]) continue;
       cout << ind(indent) << "Key byte: " << (char)i << endl;
       if (isLeaf(child[i])) {
         cout << ind(indent+1) << "Leaf: " << getLeafValue(child[i]) << endl;

@@ -8,4 +8,9 @@ class PerformanceTestRunner {
     void run(std::istream& tupleStream);
 };
 
+class MicroTestRunner {
+  public:
+    void run(std::istream& tupleStream);
+};
+
 #endif

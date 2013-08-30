@@ -3,6 +3,8 @@
 #include <cstdlib>    // malloc, free
 #include <cstring>    // memset, memcpy
 #include <emmintrin.h> // x86 SSE intrinsics
+#undef NDEBUG
+#include <cassert>
 
 /**
  * @file
@@ -28,24 +30,23 @@ static const int8_t NodeType16=1;
 static const int8_t NodeType48=2;
 static const int8_t NodeType256=3;
 
-// The maximum prefix length for compressed paths stored in the
-// header, if the path is longer it is loaded from the database on
-// demand
-static const unsigned maxPrefixLength=9;
+inline unsigned min(unsigned a,unsigned b);
+unsigned min(unsigned a,unsigned b) {
+  // Helper function
+  return (a<b)?a:b;
+}
 
-// Shared header of all inner nodes
-struct ARTBase::Node {
-  // length of the compressed path (prefix)
-  uint32_t prefixLength;
-  // number of non-null children
-  uint16_t count;
-  // node type
-  int8_t type;
-  // compressed path (prefix)
-  uint8_t prefix[maxPrefixLength];
+inline uint8_t flipSign(uint8_t keyByte);
+uint8_t flipSign(uint8_t keyByte) {
+  // Flip the sign bit, enables signed SSE comparison of unsigned values, used by Node16
+  return keyByte^128;
+}
 
-  Node(int8_t nodeType) : prefixLength(0),count(0),type(nodeType) {}
-};
+
+void ARTBase::Node::print(uint32_t indent) {
+  cout << ind(indent) << "Children: " << count << endl;
+  cout << ind(indent) << "Prefix: " << string(reinterpret_cast<char*>(prefix), min(prefixLength, 9 /* ARTBase::maxPrefixLength */)) << endl;
+}
 
 // Node with up to 4 children
 struct ARTBase::Node4 : Node {
@@ -56,7 +57,18 @@ struct ARTBase::Node4 : Node {
     memset(key,0,sizeof(key));
     memset(child,0,sizeof(child));
   }
+
+  void print(uint32_t indent);
 };
+
+void ARTBase::Node4::print(uint32_t indent) {
+  Node::print(indent);
+
+  for (size_t i = 0; i < count; i++) {
+    cout << ind(indent) << "Key byte: " << (char)key[i] << endl;
+    printChild(child[i], indent);
+  }
+}
 
 // Node with up to 16 children
 struct ARTBase::Node16 : Node {
@@ -67,7 +79,18 @@ struct ARTBase::Node16 : Node {
     memset(key,0,sizeof(key));
     memset(child,0,sizeof(child));
   }
+
+  void print(uint32_t indent);
 };
+
+void ARTBase::Node16::print(uint32_t indent) {
+  Node::print(indent);
+
+  for (size_t i = 0; i < count; i++) {
+    cout << ind(indent) << "Key byte: " << (char)flipSign(key[i]) << endl;
+    printChild(child[i], indent);
+  }
+}
 
 static const uint8_t emptyMarker=48;
 
@@ -80,7 +103,20 @@ struct ARTBase::Node48 : Node {
     memset(childIndex,emptyMarker,sizeof(childIndex));
     memset(child,0,sizeof(child));
   }
+
+  void print(uint32_t indent);
 };
+
+void ARTBase::Node48::print(uint32_t indent) {
+  Node::print(indent);
+
+  for (uint16_t i = 0; i < 256; i++) {
+    if (childIndex[i] == emptyMarker) continue;
+    cout << ind(indent) << "Key byte: " << (char)i << endl;
+
+    printChild(child[childIndex[i]], indent);
+  }
+}
 
 // Node with up to 256 children
 struct ARTBase::Node256 : Node {
@@ -89,27 +125,33 @@ struct ARTBase::Node256 : Node {
   Node256() : Node(NodeType256) {
     memset(child,0,sizeof(child));
   }
+
+  void print(uint32_t indent);
 };
+
+void ARTBase::Node256::print(uint32_t indent) {
+  Node::print(indent);
+
+  for (uint16_t i = 0; i < 256; i++) {
+    if (!child[i]) continue;
+    cout << ind(indent) << "Key byte: " << (char)i << endl;
+    printChild(child[i], indent);
+  }
+}
 
 inline ARTBase::Node* ARTBase::makeLeaf(uintptr_t tid) const {
   // Create a pseudo-leaf
   return reinterpret_cast<Node*>((tid<<1)|1);
 }
 
-uintptr_t ARTBase::getLeafValue(Node* node) const {
+uintptr_t ARTBase::getLeafValue(Node* node) {
   // The the value stored in the pseudo-leaf
   return reinterpret_cast<uintptr_t>(node)>>1;
 }
 
-bool ARTBase::isLeaf(Node* node) const {
+bool ARTBase::isLeaf(Node* node) {
   // Is the node a leaf?
   return reinterpret_cast<uintptr_t>(node)&1;
-}
-
-inline uint8_t flipSign(uint8_t keyByte);
-uint8_t flipSign(uint8_t keyByte) {
-  // Flip the sign bit, enables signed SSE comparison of unsigned values, used by Node16
-  return keyByte^128;
 }
 
 // This address is used to communicate that search failed
@@ -196,6 +238,41 @@ ARTBase::Node* ARTBase::minimum(ARTBase::Node* node) const {
   throw; // Unreachable
 }
 
+ARTBase::Node* ARTBase::lastChild(ARTBase::Node* node) const {
+  // Find the leaf with largest key
+  if (!node)
+    return NULL;
+
+  if (isLeaf(node))
+    return node;
+
+  switch (node->type) {
+    case NodeType4: {
+                      Node4* n=static_cast<Node4*>(node);
+                      return (n->child[n->count-1]);
+                    }
+    case NodeType16: {
+                       Node16* n=static_cast<Node16*>(node);
+                       return (n->child[n->count-1]);
+                     }
+    case NodeType48: {
+                       Node48* n=static_cast<Node48*>(node);
+                       unsigned pos=255;
+                       while (n->childIndex[pos]==emptyMarker)
+                         pos--;
+                       return (n->child[n->childIndex[pos]]);
+                     }
+    case NodeType256: {
+                        Node256* n=static_cast<Node256*>(node);
+                        unsigned pos=255;
+                        while (!n->child[pos])
+                          pos--;
+                        return (n->child[pos]);
+                      }
+  }
+  throw; // Unreachable
+}
+
 ARTBase::Node* ARTBase::maximum(ARTBase::Node* node) const {
   // Find the leaf with largest key
   if (!node)
@@ -234,7 +311,8 @@ ARTBase::Node* ARTBase::maximum(ARTBase::Node* node) const {
 bool ARTBase::leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth) const {
   // Check if the key of the leaf is equal to the searched key
   if (depth!=keyLength) {
-    uint8_t* leafKey = loadKey(getLeafValue(leaf));
+    uint8_t leafKey[keyLength];
+    loadKey(getLeafValue(leaf), leafKey, keyLength);
     for (unsigned i=depth;i<keyLength;i++)
       if (leafKey[i]!=key[i])
         return false;
@@ -242,14 +320,15 @@ bool ARTBase::leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned d
   return true;
 }
 
-unsigned ARTBase::prefixMismatch(Node* node,uint8_t key[],unsigned depth) const {
+unsigned ARTBase::prefixMismatch(Node* node,uint8_t key[],unsigned depth, unsigned keyLength) const {
   // Compare the key with the prefix of the node, return the number matching bytes
   unsigned pos;
   if (node->prefixLength>maxPrefixLength) {
     for (pos=0;pos<maxPrefixLength;pos++)
       if (key[depth+pos]!=node->prefix[pos])
         return pos;
-    uint8_t* minKey = loadKey(getLeafValue(minimum(node)));
+    uint8_t minKey[keyLength];
+    loadKey(getLeafValue(minimum(node)), minKey, keyLength);
     for (;pos<node->prefixLength;pos++)
       if (key[depth+pos]!=minKey[depth+pos])
         return pos;
@@ -273,7 +352,8 @@ ARTBase::Node* ARTBase::lookupValue(ARTBase::Node* node,uint8_t key[],unsigned k
 
       if (depth!=keyLength) {
         // Check leaf
-        uint8_t* leafKey = loadKey(getLeafValue(node));
+        uint8_t leafKey[keyLength];
+        loadKey(getLeafValue(node), leafKey, keyLength);
         for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++)
           if (leafKey[i]!=key[i])
             return NULL;
@@ -309,19 +389,97 @@ ARTBase::Node* ARTBase::lookupPrefix(ARTBase::Node* node,uint8_t key[],unsigned 
       return NULL;
     }
 
-    unsigned mismatch = prefixMismatch(node, key, depth) + depth;
-    if (mismatch > keyLength) {
-      return NULL;
-    }
-    else if (mismatch == keyLength) {
+    unsigned matchingChars = prefixMismatch(node, key, depth, keyLength);
+    if (matchingChars == keyLength) {
+      // Return inner node
       return node;
     }
-    else {
-      depth+=node->prefixLength;
+    else if (matchingChars != node->prefixLength) {
+      return NULL;
     }
+
+    depth+=node->prefixLength;
 
     node=*findChild(node,key[depth]);
     depth++;
+  }
+
+  return NULL;
+}
+
+ARTBase::Node* ARTBase::secondChild(ARTBase::Node* node) const {
+  assert(node->count > 1);
+  Node* child;
+  switch (node->type) {
+    case NodeType4: {
+                      Node4* n = static_cast<Node4*>(node);
+                      child = n->child[n->count-2];
+                      break;
+                    }
+    case NodeType16:
+                    {
+                      Node16* n = static_cast<Node16*>(node);
+                      child = n->child[n->count-2];
+                      break;
+                    }
+    case NodeType48:
+                    {
+                      Node48* n = static_cast<Node48*>(node);
+                      unsigned i = 47;
+                      while (n->childIndex[i]==emptyMarker) i--;
+                      i--;
+                      while (n->childIndex[i]==emptyMarker) i--;
+                      child = n->child[n->childIndex[i]];
+                      break;
+                    }
+    case NodeType256:
+                    {
+                      Node256* n = static_cast<Node256*>(node);
+                      unsigned i = 255;
+                      while (n->child[i] == NULL) i--;
+                      i--;
+                      while (n->child[i] == NULL) i--;
+                      child = n->child[i];
+                      break;
+                    }
+    default: throw;
+  }
+  assert(child != NULL);
+  return maximum(child);
+}
+
+ARTBase::Node* ARTBase::sartLookupValue(ARTBase::Node* node,uint8_t key[],unsigned keyLength,unsigned depth) const {
+  //std::cout << "lookup" << std::endl;
+
+  while (node != NULL) {
+    if (isLeaf(node)) {
+      return node;
+    }
+
+    unsigned mismatchPos = prefixMismatch(node, key, depth, keyLength);
+    if (mismatchPos != node->prefixLength) {
+      return minimum(node);
+    }
+
+    if (keyLength == depth+node->prefixLength) {
+      return minimum(node);
+    }
+
+    depth += node->prefixLength;
+
+    Node** child = findChild(node, key[depth]);
+    if (child != NULL && *child) {
+      node = *child;
+      depth++;
+      continue;
+    }
+
+    assert(node != NULL);
+    child = greaterThan(node, key[depth]);
+    if (child == NULL || !(*child)) {
+      return maximum(*lowerThan(node, key[depth]));
+    }
+    return minimum(*child);
   }
 
   return NULL;
@@ -337,7 +495,7 @@ ARTBase::Node* ARTBase::lookupValuePessimistic(ARTBase::Node* node,uint8_t key[]
       return NULL;
     }
 
-    if (prefixMismatch(node,key,depth)!=node->prefixLength)
+    if (prefixMismatch(node,key,depth,keyLength)!=node->prefixLength)
       return NULL; else
         depth+=node->prefixLength;
 
@@ -348,19 +506,13 @@ ARTBase::Node* ARTBase::lookupValuePessimistic(ARTBase::Node* node,uint8_t key[]
   return NULL;
 }
 
-inline unsigned min(unsigned a,unsigned b);
-unsigned min(unsigned a,unsigned b) {
-  // Helper function
-  return (a<b)?a:b;
-}
-
 void ARTBase::copyPrefix(ARTBase::Node* src,ARTBase::Node* dst) const {
   // Helper function that copies the prefix from the source to the destination node
   dst->prefixLength=src->prefixLength;
   memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
 }
 
-void ARTBase::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value) {
+void ARTBase::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value, unsigned maxKeyLength) {
   // Insert the leaf value into the tree
 
   if (node==NULL) {
@@ -370,10 +522,16 @@ void ARTBase::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth
 
   if (isLeaf(node)) {
     // Replace leaf with Node4 and store both leaves in it
-    uint8_t* existingKey = loadKey(getLeafValue(node));
+    uint8_t existingKey[maxKeyLength];
+    loadKey(getLeafValue(node), existingKey, maxKeyLength);
+#ifdef DEBUG
+    assert(existingKey != nullptr);
+#endif
     unsigned newPrefixLength=0;
-    while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
+    while (true) {
+      if (existingKey[depth+newPrefixLength]!=key[depth+newPrefixLength]) break;
       newPrefixLength++;
+    }
 
     Node4* newNode=new Node4();
     newNode->prefixLength=newPrefixLength;
@@ -387,7 +545,7 @@ void ARTBase::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth
 
   // Handle prefix of inner node
   if (node->prefixLength) {
-    unsigned mismatchPos=prefixMismatch(node,key,depth);
+    unsigned mismatchPos=prefixMismatch(node,key,depth,maxKeyLength);
     if (mismatchPos!=node->prefixLength) {
       // Prefix differs, create new node
       Node4* newNode=new Node4();
@@ -401,7 +559,8 @@ void ARTBase::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth
         memmove(node->prefix,node->prefix+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
       } else {
         node->prefixLength-=(mismatchPos+1);
-        uint8_t* minKey = loadKey(getLeafValue(minimum(node)));
+        uint8_t minKey[maxKeyLength];
+        loadKey(getLeafValue(minimum(node)), minKey, maxKeyLength);
         insertNode4(newNode,nodeRef,minKey[depth+mismatchPos],node);
         memmove(node->prefix,minKey+depth+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
       }
@@ -414,7 +573,7 @@ void ARTBase::insertValue(Node* node,Node** nodeRef,uint8_t key[],unsigned depth
   // Recurse
   Node** child=findChild(node,key[depth]);
   if (*child) {
-    insertValue(*child,child,key,depth+1,value);
+    insertValue(*child,child,key,depth+1,value,maxKeyLength);
     return;
   }
 
@@ -510,7 +669,7 @@ void ARTBase::insertNode256(Node256* node,uint8_t keyByte,Node* child) {
   node->child[keyByte]=child;
 }
 
-void ARTBase::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth) {
+void ARTBase::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth, unsigned maxKeyLength) {
   // Delete a leaf from a tree
 
   if (!node)
@@ -525,7 +684,7 @@ void ARTBase::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,u
 
   // Handle prefix
   if (node->prefixLength) {
-    if (prefixMismatch(node,key,depth)!=node->prefixLength)
+    if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength)
       return;
     depth+=node->prefixLength;
   }
@@ -541,7 +700,7 @@ void ARTBase::erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,u
     }
   } else {
     //Recurse
-    erase(*child,child,key,keyLength,depth+1);
+    erase(*child,child,key,keyLength,depth+1,maxKeyLength);
   }
 }
 
@@ -638,3 +797,130 @@ void ARTBase::eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte) {
     delete node;
   }
 }
+
+ARTBase::Node** ARTBase::greaterThan(Node* n,uint8_t keyByte) const {
+  // Find the next child for the keyByte
+  switch (n->type) {
+    case NodeType4: {
+                      Node4* node=static_cast<Node4*>(n);
+                      for (int i=0;i<node->count;i++) {
+                        if (keyByte<node->key[i]) {
+                          return &node->child[i];
+                        }
+                      }
+                      return &nullNode;
+                    }
+    case NodeType16: {
+                       Node16* node=static_cast<Node16*>(n);
+                       for (int i=0;i<node->count;i++) {
+                         if (keyByte<flipSign(node->key[i])) {
+                           return &node->child[i];
+                         }
+                       }
+                       return &nullNode;
+                     }
+    case NodeType48: {
+                       Node48* node=static_cast<Node48*>(n);
+                       for (int i=keyByte+1;i<256;i++) {
+                         if (node->childIndex[i]!=emptyMarker) {
+                           return &node->child[node->childIndex[i]];
+                         }
+                       }
+                       return &nullNode;
+                     }
+    case NodeType256: {
+                        Node256* node=static_cast<Node256*>(n);
+                        for (int i=keyByte+1;i<256;i++) {
+                          if (node->child[i] != NULL) {
+                            return &(node->child[i]);
+                          }
+                        }
+                        return &nullNode;
+                      }
+  }
+  throw; // Unreachable
+}
+
+ARTBase::Node** ARTBase::lowerThan(Node* n,uint8_t keyByte) const {
+  // Find the next child for the keyByte
+  switch (n->type) {
+    case NodeType4: {
+                      Node4* node=static_cast<Node4*>(n);
+                      for (int i=node->count-1;i>=0;i--) {
+                        if (node->key[i]<keyByte) {
+                          return &node->child[i];
+                        }
+                      }
+                      return &nullNode;
+                    }
+    case NodeType16: {
+                       Node16* node=static_cast<Node16*>(n);
+                       for (int i=node->count-1;i>=0;i--) {
+                         if (flipSign(node->key[i])<keyByte) {
+                           return &node->child[i];
+                         }
+                       }
+                       return &nullNode;
+                     }
+    case NodeType48: {
+                       Node48* node=static_cast<Node48*>(n);
+                       for (int i=keyByte-1;i>=0;i--) {
+                         if (node->childIndex[i]!=emptyMarker) {
+                           return &node->child[node->childIndex[i]];
+                         }
+                       }
+                       return &nullNode;
+                     }
+    case NodeType256: {
+                        Node256* node=static_cast<Node256*>(n);
+                        for (int i=keyByte-1;i>=0;i--) {
+                          if (node->child[i] != NULL) {
+                            return &(node->child[i]);
+                          }
+                        }
+                        return &nullNode;
+                      }
+  }
+  throw; // Unreachable
+}
+
+ARTBase::Node* ARTBase::sartLookupPrefix(ARTBase::Node* node,uint8_t key[],unsigned keyLength,unsigned depth) const {
+  // Find the inner node with a matching prefix
+
+  while (node != NULL) {
+    if (isLeaf(node) && keyLength >= depth) {
+      return node;
+    }
+
+    unsigned matchingChars = prefixMismatch(node, key, depth, keyLength);
+    if (matchingChars == keyLength) {
+      // Return inner node
+      return node;
+    }
+    else if (matchingChars != node->prefixLength) {
+      return NULL;
+    }
+    depth += node->prefixLength;
+
+    // find child node
+    Node* child = *findChild(node, key[depth]);
+    if (child) {
+      node = child;
+      depth++;
+      continue;
+    }
+
+    // No child node found; we're at the last matching inner node
+    // find the lower child instead
+    child = *lowerThan(node, key[depth]);
+    if (child) {
+      // we need the previous page, which is either the maximum of the parent (recursive)
+      // or the current minimum
+      return minimum(node);
+    }
+    return maximum(child);
+  }
+
+  return NULL;
+}
+

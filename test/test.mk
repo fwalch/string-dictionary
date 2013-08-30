@@ -1,4 +1,4 @@
-test_sources = PageTests.cpp ARTTests.cpp HATTests.cpp
+test_sources = PageTests.cpp IntegrationTests.cpp
 test_executables = test
 test_dependencies = src
 test_libraries = gmock gtest

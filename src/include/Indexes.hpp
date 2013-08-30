@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "ART.hpp"
+#include "SART.hpp"
 #include "HAT.hpp"
 #include "Hash.hpp"
 #include "BTree.hpp"

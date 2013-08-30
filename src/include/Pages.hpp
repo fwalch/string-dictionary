@@ -3,5 +3,8 @@
 
 #include "MultiUncompressedPage.hpp"
 #include "DynamicPage.hpp"
+#include "DynamicSlottedPage.hpp"
+#include "SlottedPage.hpp"
+#include "BottomUpPage.hpp"
 
 #endif

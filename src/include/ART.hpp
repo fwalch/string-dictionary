@@ -6,15 +6,14 @@
 
 template<class TKey>
 class ART : public ARTBase {
-  private:
-    uint8_t* loadKey(uintptr_t leafValue) const;
-    uint8_t* convertKey(TKey key) const;
-    unsigned keySize(TKey key) const;
+  protected:
+    void loadKey(uintptr_t leafValue, uint8_t* key, unsigned maxKeyLength) const;
 
   public:
     ART(LeafStore* leafStore);
-    void insert(TKey key, uintptr_t value);
-    bool lookup(TKey key, uintptr_t& value) const;
+    virtual ~ART() { }
+    virtual void insert(TKey key, uintptr_t value);
+    virtual bool lookup(TKey key, uintptr_t& value) const;
     std::pair<uintptr_t, uintptr_t> rangeLookup(TKey prefix) const;
     static std::string description();
 };
