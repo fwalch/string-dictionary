@@ -2,6 +2,8 @@
 #define H_BPlusTree
 
 #include "stx/btree_map.hpp"
+#include <cstdint>
+#include <string>
 
 template<typename TKey> class BPlusTree {
   private:

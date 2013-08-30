@@ -2,6 +2,8 @@
 #define H_Hash
 
 #include <unordered_map>
+#include <cstdint>
+#include <string>
 
 template<typename TKey> class Hash {
   private:

@@ -2,6 +2,8 @@
 #define H_RedBlack
 
 #include <map>
+#include <cstdint>
+#include <string>
 
 template<typename TKey> class RedBlack {
   private:
