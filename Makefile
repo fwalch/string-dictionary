@@ -17,7 +17,10 @@ endif
 
 # Define clang flags
 ifeq ($(CXX),clang++)
-	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-documentation -Wno-weak-template-vtables -Wno-shadow -Wno-switch-enum -Wno-vla -Wno-vla-extension --std=c++11
+	CXXFLAGS = -g -Weverything -Werror -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-documentation -Wno-weak-template-vtables -Wno-shadow -Wno-switch-enum -Wno-vla --std=c++11
+endif
+ifeq ($(shell clang --version | grep ^clang | sed -e 's/(.*)//g' -e 's/[^0-9.]*//g'),3.3)
+	CXXFLAGS += -Wno-vla-extension
 endif
 ifeq ($(CC),clang)
 	CFLAGS = -g -Weverything -Werror --std=c99
